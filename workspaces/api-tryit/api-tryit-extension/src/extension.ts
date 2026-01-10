@@ -85,6 +85,19 @@ export async function activate(context: vscode.ExtensionContext) {
 		vscode.window.showInformationMessage('Hello from API TryIt!');
 	});
 
+	// Register MCP server
+	const mcpProvider = vscode.lm.registerMcpServerDefinitionProvider('api.tryit.mcpServer', {
+		provideMcpServerDefinitions: async ():Promise<vscode.McpHttpServerDefinition[]> => {
+			return [
+				{
+					label: 'API TryIt MCP Server',
+					uri: vscode.Uri.parse('http://localhost:3000/mcp'),
+					headers: {}
+				}
+			];
+		}
+	});
+
 	context.subscriptions.push(
 		refreshCommand, 
 		openTryItCommand, 

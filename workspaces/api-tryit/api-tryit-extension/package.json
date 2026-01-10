@@ -108,7 +108,13 @@
           "when": "false"
         }
       ]
-    }
+    },
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "api.tryit.mcpServer",
+        "label": "API TryIt MCP Server"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",
