@@ -23,6 +23,7 @@ server.registerTool("try-resource", {
     if (!resourceUrl || !method) {
         throw new Error("resourceUrl and method are required");
     }
+    try {
     const response = await axios.request({
         url: resourceUrl,
         method: method as any,
@@ -31,6 +32,12 @@ server.registerTool("try-resource", {
     return {
         content: [{ type: "text", text: results }],
     };
+    } catch (error: any) {
+      console.error('Error in try-resource tool:', error);
+        return {
+            content: [{ type: "text", text: JSON.stringify(error) }],
+        };
+    }
 });
 
 export default server;
