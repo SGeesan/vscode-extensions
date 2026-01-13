@@ -22,6 +22,7 @@ import { TryItPanel } from './webview-panel/TryItPanel';
 import { ApiExplorerProvider } from './tree-view/ApiExplorerProvider';
 import { ApiTryItStateMachine, EVENT_TYPE } from './stateMachine';
 import { ApiRequestItem } from '@wso2/api-tryit-core';
+import APITryTool from './tools/APITryTool';
 
 export async function activate(context: vscode.ExtensionContext) {
 	// Initialize RPC handlers
@@ -98,6 +99,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
+	// Register LLM tool
+	const apiTryTool = vscode.lm.registerTool('api-try-tool', new APITryTool());
+	
 	context.subscriptions.push(
 		refreshCommand, 
 		openTryItCommand, 
@@ -105,7 +109,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		newRequestCommand,
 		newCollectionCommand,
 		settingsCommand,
-		helloCommand
+		helloCommand,
+		mcpProvider,
+		apiTryTool
 	);
 }
 

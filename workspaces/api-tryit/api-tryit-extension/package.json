@@ -109,6 +109,39 @@
         }
       ]
     },
+    "languageModelTools": [
+      {
+        "name": "api-try-tool",
+        "displayName": "API Try Tool",
+        "modelDescription": "A tool to make requests to a given API endpoint. Provide the endpoint URL and request details to get a response. Useful for testing and debugging APIs.",
+        "userDescription": "Try API endpoints",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "API-try-tool",
+        "when": "true",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "method": {
+              "type": "string",
+              "description": "HTTP method to use for the request (e.g., GET, POST, PUT, DELETE)."
+            },
+            "url": {
+              "type": "string",
+              "description": "The full URL of the API endpoint to which the request is to be made."
+            },
+            "headers": {
+              "type": "object",
+              "description": "A key-value pair object representing the headers to include in the request."
+            },
+            "body": {
+              "type": "string",
+              "description": "The body of the request, typically used with POST and PUT methods. Do not include when not needed."
+            }
+          },
+          "required": ["method", "url" ]
+        }
+      }
+    ],
     "mcpServerDefinitionProviders": [
       {
         "id": "api.tryit.mcpServer",
@@ -142,6 +175,7 @@
   "dependencies": {
     "@wso2/api-tryit-core": "workspace:*",
     "@wso2/api-tryit-rpc-client": "workspace:*",
+    "axios": "^1.12.2",
     "vscode-messenger": "^0.5.1",
     "vscode-messenger-common": "^0.5.1",
     "xstate": "^4.38.3"
