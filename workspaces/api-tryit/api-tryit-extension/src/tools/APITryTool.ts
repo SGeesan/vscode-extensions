@@ -6,6 +6,7 @@ export type HttpRequestConfig = {
   url: string;
   headers?: Record<string, string>;
   body?: string;
+  collectionName: string;
 };
 
 export default class APITryTool implements vscode.LanguageModelTool<HttpRequestConfig> {
@@ -28,7 +29,8 @@ export default class APITryTool implements vscode.LanguageModelTool<HttpRequestC
                     new vscode.LanguageModelTextPart(`Error from request: ${JSON.stringify(
                     { error: error.message,
                         status: error.status,
-                        data: error.response?.data
+                        data: error.response?.data,
+                        errorCode: error.code
                      })}`)
                 ]);
             }
