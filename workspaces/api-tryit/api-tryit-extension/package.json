@@ -121,6 +121,10 @@
         "inputSchema": {
           "type": "object",
           "properties": {
+            "collectionName": {
+              "type": "string",
+              "description": "Provide a collection name to save the request under that collection. Use a name that would help agregate similar requests based on the service, operation, or any other relevant criteria."
+            },
             "method": {
               "type": "string",
               "description": "HTTP method to use for the request (e.g., GET, POST, PUT, DELETE)."
@@ -138,8 +142,21 @@
               "description": "The body of the request, typically used with POST and PUT methods. Do not include when not needed."
             }
           },
-          "required": ["method", "url" ]
+          "required": ["method", "url","collectionName" ]
         }
+      }
+    ],
+    "chatParticipants": [
+      {
+        "id": "api.tryit.assistant",
+        "name": "api-tryit-assistant",
+        "fullName": "API Try It Assistant",
+        "description": "An assistant that helps users test and debug APIs usin the openapi specification",
+        "isSticky": true,
+        "commands": [
+          {"name": "tryAPI",
+        "description": "Try the APIs defined in OpenAPI specification"}
+        ]
       }
     ],
     "mcpServerDefinitionProviders": [
@@ -176,6 +193,7 @@
     "@wso2/api-tryit-core": "workspace:*",
     "@wso2/api-tryit-rpc-client": "workspace:*",
     "axios": "^1.12.2",
+    "@vscode/chat-extension-utils": "^0.0.0-alpha.5",
     "vscode-messenger": "^0.5.1",
     "vscode-messenger-common": "^0.5.1",
     "xstate": "^4.38.3"

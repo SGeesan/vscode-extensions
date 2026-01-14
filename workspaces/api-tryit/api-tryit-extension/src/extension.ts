@@ -23,6 +23,8 @@ import { ApiExplorerProvider } from './tree-view/ApiExplorerProvider';
 import { ApiTryItStateMachine, EVENT_TYPE } from './stateMachine';
 import { ApiRequestItem } from '@wso2/api-tryit-core';
 import APITryTool from './tools/APITryTool';
+import { assistantRequestHandler } from './chat-participants/apiTryItAssistant';
+import { refreshChatModels } from './chat-participants/chatModels';
 
 export async function activate(context: vscode.ExtensionContext) {
 	// Initialize RPC handlers
@@ -101,6 +103,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Register LLM tool
 	const apiTryTool = vscode.lm.registerTool('api-try-tool', new APITryTool());
+
+	// Register Chat Participant (API Try It Assistant)
+	const apiTryItAssistant = vscode.chat.createChatParticipant('api.tryit.assistant', assistantRequestHandler);
+	await refreshChatModels();
+	// TODO: attach an icon for the chat participant
 	
 	context.subscriptions.push(
 		refreshCommand, 
@@ -111,7 +118,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		settingsCommand,
 		helloCommand,
 		mcpProvider,
-		apiTryTool
+		apiTryTool,
+		apiTryItAssistant
 	);
 }
 

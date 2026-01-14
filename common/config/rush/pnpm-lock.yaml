@@ -363,6 +363,9 @@ importers:
 
   ../../workspaces/api-tryit/api-tryit-extension:
     dependencies:
+      '@vscode/chat-extension-utils':
+        specifier: ^0.0.0-alpha.5
+        version: 0.0.0-alpha.5
       '@wso2/api-tryit-core':
         specifier: workspace:*
         version: link:../api-tryit-core
@@ -10931,6 +10934,9 @@ packages:
   '@vscode-logging/wrapper@2.0.0':
     resolution: {integrity: sha512-XA8T61WL3vsrfEMUog1km8USEgnD/3H2qXk7fizFzuEFqNRGpVq9AYjxSUuBMsffIdtwfAOFYZJ8HIwzy+cGjA==}
 
+  '@vscode/chat-extension-utils@0.0.0-alpha.5':
+    resolution: {integrity: sha512-EkfetTIGMDyClZkIx8oMOhprlXufnj0b/G1W4QGg4jhkWVUBE7kLRZsqEnpNjmtxHTugzc61gPQwT3zgH3HXgA==}
+
   '@vscode/codicons@0.0.33':
     resolution: {integrity: sha512-VdgpnD75swH9hpXjd34VBgQ2w2quK63WljodlUcOoJDPKiV+rPjHrcUc2sjLCNKxhl6oKqmsZgwOWcDAY2GKKQ==}
 
@@ -10943,6 +10949,9 @@ packages:
 
   '@vscode/iconv-lite-umd@0.7.1':
     resolution: {integrity: sha512-tK6k0DXFHW7q5+GGuGZO+phpAqpxO4WXl+BLc/8/uOk3RsM2ssAL3CQUQDb1TGfwltjsauhN6S4ghYZzs4sPFw==}
+
+  '@vscode/prompt-tsx@0.3.0-alpha.24':
+    resolution: {integrity: sha512-WUz6rPLcN6F64WxxwTiLzHOuhUcdLKBWMckppn43DBC1Ba67Lvd9RV+2LOxj938YzvEVOKGoAY/qgRtXd77I7Q==}
 
   '@vscode/test-electron@2.5.2':
     resolution: {integrity: sha512-8ukpxv4wYe0iWMRQU18jhzJOHkeGKbnw7xWRX3Zw1WJA4cEKbHcmmLPdPrPtL6rhDcrlCZN+xKRpv09n4gRHYg==}
@@ -37064,6 +37073,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@vscode/chat-extension-utils@0.0.0-alpha.5':
+    dependencies:
+      '@vscode/prompt-tsx': 0.3.0-alpha.24
+
   '@vscode/codicons@0.0.33': {}
 
   '@vscode/codicons@0.0.36': {}
@@ -37077,6 +37090,8 @@ snapshots:
       - tslib
 
   '@vscode/iconv-lite-umd@0.7.1': {}
+
+  '@vscode/prompt-tsx@0.3.0-alpha.24': {}
 
   '@vscode/test-electron@2.5.2':
     dependencies:
