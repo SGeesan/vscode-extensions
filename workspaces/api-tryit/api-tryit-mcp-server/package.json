@@ -1,24 +1,25 @@
 {
-  "name": "mcp-server",
+  "name": "@wso2/api-tryit-mcp-server",
+  "type": "module",
   "version": "1.0.0",
-  "description": "",
+  "description": "API TryIt MCP Server",
   "main": "dist/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
-    "start": "npm run build && node ./dist/main.js"
+    "build": "tsc && pnpm run postbuild",
+    "postbuild": "copyfiles -u 1 \"dist/**/*\" ../api-tryit-extension/dist/mcp-server",
+    "start": "pnpm run build && node ./dist/main.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.2",
-    "axios": "^1.13.2",
+    "axios": "^1.12.2",
     "zod": "^4.3.5"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "wso2",
+  "license": "Apache-2.0",
   "devDependencies": {
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.17",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "copyfiles": "~2.4.1"
   }
 }
