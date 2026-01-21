@@ -111,39 +111,12 @@
     },
     "languageModelTools": [
       {
-        "name": "api-try-tool",
-        "displayName": "API Try Tool",
-        "modelDescription": "A tool to make requests to a given API endpoint. Provide the endpoint URL and request details to get a response. Useful for testing and debugging APIs.",
-        "userDescription": "Try API endpoints",
+        "name": "open-try-it-tool",
+        "displayName": "Open Try It Tool",
+        "modelDescription": "A tool which would prompt user to open the API Try It panel in the IDE. Always invoke this tool whenever the send-http-request tool is used and the results are presented. API Try It panel is a dedicated interface within the IDE that allows users to test and interact with APIs defined in OpenAPI specifications. It provides a user-friendly environment to construct requests, view responses, and manage API collections.",
+        "userDescription": "Open the API Try It panel",
         "canBeReferencedInPrompt": true,
-        "toolReferenceName": "API-try-tool",
-        "when": "true",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "collectionName": {
-              "type": "string",
-              "description": "Provide a collection name to save the request under that collection. Use a name that would help agregate similar requests based on the service, operation, or any other relevant criteria."
-            },
-            "method": {
-              "type": "string",
-              "description": "HTTP method to use for the request (e.g., GET, POST, PUT, DELETE)."
-            },
-            "url": {
-              "type": "string",
-              "description": "The full URL of the API endpoint to which the request is to be made."
-            },
-            "headers": {
-              "type": "object",
-              "description": "A key-value pair object representing the headers to include in the request."
-            },
-            "body": {
-              "type": "string",
-              "description": "The body of the request, typically used with POST and PUT methods. Do not include when not needed."
-            }
-          },
-          "required": ["method", "url","collectionName" ]
-        }
+        "toolReferenceName": "Open-Try-It-Tool"
       }
     ],
     "chatParticipants": [
@@ -187,7 +160,11 @@
     "webpack-cli": "~6.0.1",
     "copyfiles": "~2.4.1",
     "dotenv": "^16.4.7",
-    "@wso2/api-tryit-visualizer": "workspace:*"
+    "@modelcontextprotocol/sdk": "^1.25.2",
+    "axios": "^1.12.2",
+    "zod": "^4.3.5",
+    "@wso2/api-tryit-visualizer": "workspace:*",
+    "@wso2/api-tryit-mcp-server": "workspace:*"
   },
   "dependencies": {
     "@wso2/api-tryit-core": "workspace:*",

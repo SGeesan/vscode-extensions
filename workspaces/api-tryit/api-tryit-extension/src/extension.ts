@@ -22,9 +22,9 @@ import { TryItPanel } from './webview-panel/TryItPanel';
 import { ApiExplorerProvider } from './tree-view/ApiExplorerProvider';
 import { ApiTryItStateMachine, EVENT_TYPE } from './stateMachine';
 import { ApiRequestItem } from '@wso2/api-tryit-core';
-import APITryTool from './tools/APITryTool';
 import { assistantRequestHandler } from './chat-participants/apiTryItAssistant';
 import { refreshChatModels } from './chat-participants/chatModels';
+import OpenTryIt from './tools/OpenTryIt';
 
 export async function activate(context: vscode.ExtensionContext) {
 	// Initialize RPC handlers
@@ -90,19 +90,21 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Register MCP server
 	const mcpProvider = vscode.lm.registerMcpServerDefinitionProvider('api.tryit.mcpServer', {
-		provideMcpServerDefinitions: async ():Promise<vscode.McpHttpServerDefinition[]> => {
+		provideMcpServerDefinitions: async ():Promise<vscode.McpStdioServerDefinition[]> => {
 			return [
 				{
 					label: 'API TryIt MCP Server',
-					uri: vscode.Uri.parse('http://localhost:3000/mcp'),
-					headers: {}
+					cwd: vscode.Uri.joinPath(context.extensionUri),
+					command: process.execPath,
+					args: [vscode.Uri.joinPath(context.extensionUri, 'dist', 'mcp-server', 'main.js').fsPath],
+					env: {}
 				}
 			];
 		}
 	});
 
-	// Register LLM tool
-	const apiTryTool = vscode.lm.registerTool('api-try-tool', new APITryTool());
+	// Register LLM tools
+	const openTryItTool = vscode.lm.registerTool('open-try-it-tool', new OpenTryIt());
 
 	// Register Chat Participant (API Try It Assistant)
 	const apiTryItAssistant = vscode.chat.createChatParticipant('api.tryit.assistant', assistantRequestHandler);
@@ -118,8 +120,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		settingsCommand,
 		helloCommand,
 		mcpProvider,
-		apiTryTool,
-		apiTryItAssistant
+		apiTryItAssistant,
+		openTryItTool
 	);
 }
 
