@@ -28,6 +28,12 @@ export const HTTPInputSchema = z.object({
 });
 
 export type HTTPInput = z.infer<typeof HTTPInputSchema>;
+type ParsedHTTPRequest = {
+	method: string;
+	url: string;
+	headers: Record<string, string>;
+	data: unknown;
+};
 
 type HTTPResponse = {
     data: unknown;
@@ -40,6 +46,17 @@ type HTTPErrorResponse = {
     message: string;
     code?: string;
     response?: HTTPResponse
+};
+
+export type HTTPToolEventInput = {
+    request: ParsedHTTPRequest;
+    scenario?: string;
+};
+
+export type HTTPToolEventOutput = {
+    request: ParsedHTTPRequest;
+	scenario?: string;
+    output: HTTPResponse | HTTPErrorResponse;
 };
 
 function createSuccessResponse(response: AxiosResponse): HTTPResponse {
@@ -80,12 +97,7 @@ export function createHttpRequestTool(eventHandler: CopilotEventHandler) {
  * Parse a curl command string into components
  * Handles quoted strings and various curl options
  */
-function parseCurl(curl: string): {
-	method: string;
-	url: string;
-	headers: Record<string, string>;
-	data: unknown;
-} {
+function parseCurl(curl: string): ParsedHTTPRequest {
 	// Remove line breaks and continuations
 	const cleanCurl = curl.replace(/\\\s*\n/g, ' ').trim();
 	
@@ -213,12 +225,14 @@ function tokenizeCurl(curl: string): string[] {
 export const executeHttpRequest = async (input: HTTPInput, eventHandler: CopilotEventHandler, context?: { toolCallId?: string }): Promise<HTTPResponse | HTTPErrorResponse> => {
 	const toolCallId = context?.toolCallId || `fallback-${Date.now()}`;
     console.log(`Executing HTTP request: input:`, input);
+    const parsedRequest = parseCurl(input.curlCommand);
+    const toolEventInput: HTTPToolEventInput = { request: parsedRequest, scenario: input.testScenario };
     try {
-		eventHandler({type:"tool_call", toolName: HTTP_REQUEST_TOOL_NAME, toolInput: input, toolCallId});
-        const response = await axios.request(parseCurl(input.curlCommand));
+		eventHandler({type:"tool_call", toolName: HTTP_REQUEST_TOOL_NAME, toolInput: toolEventInput, toolCallId});
+        const response = await axios.request(parsedRequest);
         console.log("HTTP request successful:", response);
 		const requestOutput = createSuccessResponse(response);
-		const toolOutput = {input, output: requestOutput};
+		const toolOutput: HTTPToolEventOutput = {request: parsedRequest, scenario: input.testScenario, output: requestOutput};
 		eventHandler({
         type: "tool_result",
         toolName: HTTP_REQUEST_TOOL_NAME,
@@ -229,7 +243,7 @@ export const executeHttpRequest = async (input: HTTPInput, eventHandler: Copilot
         console.error("HTTP request failed:", error);
         if (axios.isAxiosError(error)) {
             const errorOutput = createErrorResponse(error);
-            const toolOutput = {input, output: errorOutput};
+            const toolOutput: HTTPToolEventOutput = {request: parsedRequest, output: errorOutput};
             eventHandler({
                 type: "tool_result",
                 toolName: HTTP_REQUEST_TOOL_NAME,
@@ -242,7 +256,7 @@ export const executeHttpRequest = async (input: HTTPInput, eventHandler: Copilot
             error: true,
             message: error instanceof Error ? error.message : String(error),
         };
-        const toolOutput = {input, output: genericErrorOutput};
+        const toolOutput: HTTPToolEventOutput = {request: parsedRequest, output: genericErrorOutput};
         eventHandler({
             type: "tool_result",
             toolName: HTTP_REQUEST_TOOL_NAME,
