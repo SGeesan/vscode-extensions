@@ -43,6 +43,7 @@ import { Button, Codicon } from "@wso2/ui-toolkit";
 import { AIChatInputRef } from "../AIChatInput";
 import ProgressTextSegment from "../ProgressTextSegment";
 import ToolCallSegment from "../ToolCallSegment";
+import TryItScenariosSegment from "../TryItScenariosSegment";
 import TodoSection from "../TodoSection";
 import { ConnectorGeneratorSegment } from "../ConnectorGeneratorSegment";
 import { ConfigurationCollectorSegment, ConfigurationCollectionData } from "../ConfigurationCollectorSegment";
@@ -420,6 +421,19 @@ const AIChat: React.FC = () => {
                     }
                     return newMessages;
                 });
+            } else if (response.toolName === "Send-HTTP-request") {
+                const toolCallId = response?.toolCallId;
+                const toolInput = response.toolInput;
+                let tool_content = "Sending HTTP request...";
+                try{
+                    tool_content = JSON.stringify(toolInput, null, 2);
+                }catch(error){
+                    console.error("Failed to stringify HTTP request tool input:", error);
+                }
+
+                updateLastMessage((content) =>
+                    content + `\n\n<tryitcall id="${toolCallId}">${tool_content}</tryitcall>`
+                );
             }
         } else if (type === "tool_result") {
             if (response.toolName === "LibrarySearchTool") {
@@ -577,6 +591,22 @@ const AIChat: React.FC = () => {
                     }
                     return newMessages;
                 });
+            } else if (response.toolName === "Send-HTTP-request") {
+                const toolCallId = response.toolCallId;
+                const toolOutput = response.toolOutput;
+                let tool_content = "<error>Agent failed to execute the HTTP request.</error>";
+                try {
+                    tool_content = JSON.stringify(toolOutput, null, 2);
+                } catch (error) {
+                    console.error("Failed to stringify HTTP request tool output:", error);
+                }
+
+                updateLastMessage((content) =>
+                    content.replace(
+                        new RegExp(`<tryitcall id="${toolCallId}">[\\s\\S]*?</tryitcall>`),
+                        `<tryitresult id="${toolCallId}">${tool_content}</tryitresult>`
+                    )
+                );
             }
         } else if (type === "task_approval_request") {
             setApprovalRequest({
@@ -1581,6 +1611,15 @@ const AIChat: React.FC = () => {
                                             return (
                                                 <ToolCallSegment
                                                     key={`tool-call-${i}`}
+                                                    text={segment.text}
+                                                    loading={segment.loading}
+                                                    failed={segment.failed}
+                                                />
+                                            );
+                                        } else if (segment.type === SegmentType.TryItScenarios) {
+                                            return (
+                                                <TryItScenariosSegment
+                                                    key={`try-it-scenarios-${i}`}
                                                     text={segment.text}
                                                     loading={segment.loading}
                                                     failed={segment.failed}
