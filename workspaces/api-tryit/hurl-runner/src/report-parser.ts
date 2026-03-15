@@ -449,6 +449,55 @@ function pickFirstDisplayText(...values: unknown[]): string | undefined {
 	return undefined;
 }
 
+function extractResponseHeaders(entry: Record<string, unknown>): Array<{ name: string; value: string }> | undefined {
+	const calls = Array.isArray(entry.calls) ? entry.calls : [];
+	const lastCall = calls.length > 0 ? calls[calls.length - 1] : undefined;
+	const responseObj = isObject(lastCall) && isObject(lastCall.response) ? lastCall.response as Record<string, unknown> : undefined;
+	if (!responseObj || !Array.isArray(responseObj.headers)) {
+		return undefined;
+	}
+
+	const headers: Array<{ name: string; value: string }> = [];
+	for (const h of responseObj.headers) {
+		if (isObject(h) && typeof h.name === 'string' && typeof h.value === 'string') {
+			headers.push({ name: h.name, value: h.value });
+		}
+	}
+	return headers.length > 0 ? headers : undefined;
+}
+
+function extractResponseBodyPath(entry: Record<string, unknown>): string | undefined {
+	const calls = Array.isArray(entry.calls) ? entry.calls : [];
+	const lastCall = calls.length > 0 ? calls[calls.length - 1] : undefined;
+	const responseObj = isObject(lastCall) && isObject(lastCall.response) ? lastCall.response as Record<string, unknown> : undefined;
+	if (!responseObj || typeof responseObj.body !== 'string') {
+		return undefined;
+	}
+	return responseObj.body;
+}
+
+async function readResponseBody(reportPath: string, bodyRelPath: string): Promise<string | undefined> {
+	try {
+		const resolvedDir = await resolveReportDir(reportPath);
+		const bodyPath = path.join(resolvedDir, bodyRelPath);
+		return await fs.readFile(bodyPath, 'utf8');
+	} catch {
+		return undefined;
+	}
+}
+
+async function resolveReportDir(reportPath: string): Promise<string> {
+	try {
+		const stat = await fs.stat(reportPath);
+		if (stat.isDirectory()) {
+			return reportPath;
+		}
+	} catch {
+		// fall through
+	}
+	return path.dirname(reportPath);
+}
+
 function parseAssertFailureMessage(
 	message: string | undefined
 ): { expression?: string; actual?: string; expected?: string } {
@@ -679,6 +728,30 @@ export async function parseFileResult(context: ParseContext): Promise<HurlFileRe
 			assertion.expression = inferred;
 		}
 	}
+
+	const reportEntries = Array.isArray(report?.entries) ? report.entries : [];
+	const bodyReads: Array<Promise<void>> = [];
+	for (let index = 0; index < entries.length; index++) {
+		const rawEntry = isObject(reportEntries[index]) ? reportEntries[index] as Record<string, unknown> : undefined;
+		if (rawEntry) {
+			const headers = extractResponseHeaders(rawEntry);
+			if (headers) {
+				entries[index].responseHeaders = headers;
+			}
+			const bodyRelPath = extractResponseBodyPath(rawEntry);
+			if (bodyRelPath) {
+				const entryRef = entries[index];
+				bodyReads.push(
+					readResponseBody(context.reportPath, bodyRelPath).then(body => {
+						if (body !== undefined) {
+							entryRef.responseBody = body;
+						}
+					})
+				);
+			}
+		}
+	}
+	await Promise.all(bodyReads);
 
 	for (let index = 0; index < entries.length; index++) {
 		const entry = entries[index];
