@@ -22,6 +22,7 @@ import * as fs from 'fs/promises';
 import { createHurlRunner, HurlRunResult, HurlFileResult, HurlEntryResult, HurlAssertionResult } from '@wso2/api-tryit-hurl-runner';
 import { parseHurlCollection } from '@wso2/api-tryit-hurl-parser';
 import { ApiCollection, ApiRequestItem, ApiFolder } from '@wso2/api-tryit-core';
+import { getHurlBinaryManager } from '../hurl/hurl-binary-manager';
 
 interface RunHurlTestInput {
     hurlScript: string;
@@ -90,12 +91,16 @@ export default class RunHurlTest implements vscode.LanguageModelTool<RunHurlTest
 
             const abort = new AbortController();
             token.onCancellationRequested(() => abort.abort());
+            const commandPath = await getHurlBinaryManager().resolveCommandPath({
+                autoInstall: true,
+                promptOnFailure: false,
+            });
 
             const [parsedCollection, runResult] = await Promise.all([
                 Promise.resolve(parseHurlCollection(hurlContent)),
                 runner.run(
                     { collectionPath: tmpFile },
-                    { timeoutMs: 30_000, signal: abort.signal }
+                    { timeoutMs: 30_000, signal: abort.signal, commandPath }
                 ),
             ]);
 
