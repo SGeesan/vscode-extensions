@@ -1,4 +1,4 @@
-// Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com/) All Rights Reserved.
+// Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com) All Rights Reserved.
 
 // WSO2 LLC. licenses this file to you under the Apache License,
 // Version 2.0 (the "License"); you may not use this file except
@@ -15,21 +15,21 @@
 // under the License.
 
 import * as path from "path";
+import * as assert from "assert";
+import * as fs from "fs";
 import * as vscode from "vscode";
 import * as dotenv from "dotenv";
-import * as fs from "fs";
-import * as assert from "assert";
 
 import { testCases } from "./test-cases";
-import { TestCase, DatamapperUsecaseResult, Summary } from "./types";
+import { TestUseCase, Summary } from "./types";
 import {
     DEFAULT_TEST_CONFIG,
     TIMING,
     PATHS,
     VSCODE_COMMANDS,
-    wait,
     processSingleBatch,
-    handleBatchDelay
+    handleBatchDelay,
+    wait
 } from "./utils";
 import {
     ResultManager,
@@ -40,20 +40,33 @@ import {
     logExecutionCompletion
 } from "./result-management";
 
+
+const PROJECT_ROOT = path.resolve(__dirname, PATHS.PROJECT_ROOT_RELATIVE);
+
+// Convert imported test cases to TestUseCase format
+const TEST_USE_CASES: readonly TestUseCase[] = testCases.map((testCase, index) => ({
+    id: `usecase_${index + 1}`,
+    description: testCase.prompt.substring(0, 50) + "...",
+    usecase: testCase.prompt,
+    operationType: undefined,
+    projectPath: path.join(PROJECT_ROOT, testCase.projectPath),
+    toolCallThresholds: testCase.toolCallThresholds
+}));
+
 /**
  * Execute multiple test cases in parallel with comprehensive result management
  */
 async function executeParallelTestsWithResults(
-    testCases: readonly TestCase[]
+    useCases: readonly TestUseCase[]
 ): Promise<Summary> {
     const resultManager = new ResultManager();
     await resultManager.initializeResultsDirectory();
 
     const startTime = Date.now();
     const iterations = DEFAULT_TEST_CONFIG.iterations;
-    logExecutionStart(testCases.length, DEFAULT_TEST_CONFIG.maxConcurrency, resultManager.getResultsDirectory(), iterations);
+    logExecutionStart(useCases.length, DEFAULT_TEST_CONFIG.maxConcurrency, resultManager.getResultsDirectory(), iterations);
 
-    const allUsecaseResults: DatamapperUsecaseResult[] = [];
+    const allUsecaseResults: import("./types").UsecaseResult[] = [];
 
     // Iterate N times if configured
     for (let iteration = 1; iteration <= iterations; iteration++) {
@@ -66,9 +79,9 @@ async function executeParallelTestsWithResults(
         let batchCount = 0;
 
         // Process tests in batches to limit concurrency
-        for (let i = 0; i < testCases.length; i += DEFAULT_TEST_CONFIG.maxConcurrency) {
+        for (let i = 0; i < useCases.length; i += DEFAULT_TEST_CONFIG.maxConcurrency) {
             batchCount++;
-            const batch = testCases.slice(i, i + DEFAULT_TEST_CONFIG.maxConcurrency);
+            const batch = useCases.slice(i, i + DEFAULT_TEST_CONFIG.maxConcurrency);
 
             // Execute batch and get results
             const batchResults = await processSingleBatch(batch, batchCount, iterations > 1 ? iteration : undefined);
@@ -80,13 +93,13 @@ async function executeParallelTestsWithResults(
             allUsecaseResults.push(...batchResults);
 
             // Handle inter-batch delay and monitoring
-            await handleBatchDelay(i, testCases.length, DEFAULT_TEST_CONFIG.maxConcurrency);
+            await handleBatchDelay(i, useCases.length, DEFAULT_TEST_CONFIG.maxConcurrency);
         }
 
         if (iterations > 1) {
             const iterationResults = allUsecaseResults.filter(r => r.iteration === iteration);
-            const iterationPassed = iterationResults.filter(r => r.passed).length;
-            console.log(`\n✅ Iteration ${iteration} completed: ${iterationPassed}/${testCases.length} passed (${Math.round(iterationPassed / testCases.length * 100)}%)`);
+            const iterationCompiled = iterationResults.filter(r => r.compiled).length;
+            console.log(`\n✅ Iteration ${iteration} completed: ${iterationCompiled}/${useCases.length} passed (${Math.round(iterationCompiled / useCases.length * 100)}%)`);
 
             // Generate and persist iteration summary
             const iterationSummary = generateIterationSummary(iterationResults, iteration);
@@ -94,7 +107,7 @@ async function executeParallelTestsWithResults(
         }
     }
 
-    console.log(`\n✅ All ${iterations > 1 ? 'iterations and ' : ''}batches processed. Total test runs: ${allUsecaseResults.length}`);
+    console.log(`\n✅ All ${iterations > 1 ? 'iterations and ' : ''}batches processed. Total use cases: ${allUsecaseResults.length}`);
 
     // Generate and persist comprehensive summary
     const summary = generateComprehensiveSummary(allUsecaseResults, iterations > 1 ? iterations : undefined);
@@ -110,7 +123,7 @@ async function executeParallelTestsWithResults(
  * Helper function to persist batch results
  */
 async function persistBatchResults(
-    usecaseResults: readonly DatamapperUsecaseResult[],
+    usecaseResults: readonly import("./types").UsecaseResult[],
     resultManager: ResultManager,
     startIndex: number,
     iteration?: number
@@ -138,7 +151,7 @@ async function setupTestEnvironment(): Promise<void> {
 
     while (attempts < TIMING.MAX_ACTIVATION_ATTEMPTS) {
         const availableCommands = await vscode.commands.getCommands();
-        if (availableCommands.includes(VSCODE_COMMANDS.AI_GENERATE_MAPPING_CODE_CORE)) {
+        if (availableCommands.includes(VSCODE_COMMANDS.AI_GENERATE_AGENT_FOR_TEST)) {
             break;
         }
         await new Promise(resolve => setTimeout(resolve, TIMING.EXTENSION_ACTIVATION_RETRY_INTERVAL));
@@ -159,7 +172,7 @@ async function setupTestEnvironment(): Promise<void> {
     }
 }
 
-suite.skip("AI Datamapper Tests Suite", () => {
+suite.only("AI Tool Usage Tests Suite", () => {
 
     suiteSetup(async function (): Promise<void> {
         await setupTestEnvironment();
@@ -169,7 +182,7 @@ suite.skip("AI Datamapper Tests Suite", () => {
         console.log("Test suite completed - using environment-based auth, no credentials to clean up");
     });
 
-    suite("Datamapper Code Generation", () => {
+    suite("Parallel Multi-UseCase Testing", () => {
         // Check API key before running any tests in this suite
         const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
         const hasAnthropicKey = anthropicApiKey && anthropicApiKey.trim() !== "";
@@ -179,19 +192,19 @@ suite.skip("AI Datamapper Tests Suite", () => {
             return; // Skip the entire suite
         }
 
-        test("Execute all datamapper test cases in parallel with comprehensive result management", async function (): Promise<void> {
-            console.log(`\n Suite Name: AI Datamapper Tests Suite`);
+        test("Execute all use cases in parallel with comprehensive result management", async function (): Promise<void> {
 
+            console.log(`\n Suite Name: AI Tool Usage Tests Suite`);
             console.log(`\n🔧 Test Configuration (Comprehensive Results):`);
             console.log(`   API Key Available: Yes`);
-            console.log(`   Total Test Cases: ${testCases.length}`);
+            console.log(`   Total Use Cases: ${TEST_USE_CASES.length}`);
             console.log(`   Iterations: ${DEFAULT_TEST_CONFIG.iterations}`);
             console.log(`   Max Concurrency: ${DEFAULT_TEST_CONFIG.maxConcurrency}`);
 
             await wait(TIMING.TEST_WAIT_TIME); // Wait for workspace to settle
 
             // Execute all test cases with comprehensive result management
-            const summary = await executeParallelTestsWithResults(testCases);
+            const summary = await executeParallelTestsWithResults(TEST_USE_CASES);
 
             // Generate comprehensive report
             generateComprehensiveReport(summary);
@@ -201,7 +214,7 @@ suite.skip("AI Datamapper Tests Suite", () => {
             console.log(`   Success Rate: ${Math.round(summary.accuracy)}%`);
             if (summary.iterations && summary.iterations > 1) {
                 console.log(`   Total Iterations: ${summary.iterations}`);
-                console.log(`   Total Test Runs: ${summary.totalTests}`);
+                console.log(`   Total Test Runs: ${summary.totalUsecases}`);
             }
 
             assert.ok(true);

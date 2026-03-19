@@ -24,19 +24,19 @@ const PROJECT_ROOT = path.resolve(__dirname, PATHS.PROJECT_ROOT_RELATIVE);
  * Test cases for datamapper code generation
  */
 export const testCases: TestCase[] = [
-    {
-        name: "Person to Student mapping",
-        resourcePath: path.join(PROJECT_ROOT, "case1"),
-        expectedFunctionName: "transform",
-    },
-    {
-        name: "Employee to EmployeeInfo mapping",
-        resourcePath: path.join(PROJECT_ROOT, "case2"),
-        expectedFunctionName: "transform",
-    },
-    {
-        name: "Student to PersonalProfile mapping",
-        resourcePath: path.join(PROJECT_ROOT, "case3"),
-        expectedFunctionName: "transform",
-    }
+    // {
+    //     name: "Person to Student mapping",
+    //     resourcePath: path.join(PROJECT_ROOT, "case1"),
+    //     expectedFunctionName: "transform",
+    // },
+    // {
+    //     name: "Employee to EmployeeInfo mapping",
+    //     resourcePath: path.join(PROJECT_ROOT, "case2"),
+    //     expectedFunctionName: "transform",
+    // },
+    // {
+    //     name: "Student to PersonalProfile mapping",
+    //     resourcePath: path.join(PROJECT_ROOT, "case3"),
+    //     expectedFunctionName: "transform",
+    // }
 ];

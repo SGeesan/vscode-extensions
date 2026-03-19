@@ -171,7 +171,7 @@ async function setupTestEnvironment(): Promise<void> {
     }
 }
 
-suite.only("AI Code Generator Tests Suite", () => {
+suite("AI Code Generator Tests Suite", () => {
 
     suiteSetup(async function (): Promise<void> {
         await setupTestEnvironment();
@@ -193,6 +193,7 @@ suite.only("AI Code Generator Tests Suite", () => {
 
         test("Execute all use cases in parallel with comprehensive result management", async function (): Promise<void> {
 
+            console.log(`\n Suite Name: AI Code Generator Tests Suite`);
             console.log(`\n🔧 Test Configuration (Comprehensive Results):`);
             console.log(`   API Key Available: Yes`);
             console.log(`   Total Use Cases: ${TEST_USE_CASES.length}`);
