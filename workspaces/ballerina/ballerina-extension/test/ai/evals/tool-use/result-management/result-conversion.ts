@@ -493,7 +493,7 @@ function isToolResultSuccess(res: { toolName: string; toolOutput?: any; output?:
 
                     const entries = Array.isArray(runOutput.entries) ? runOutput.entries : [];
                     const hasEntryFailure = entries.some((entry: { status?: string; errorMessage?: string }) =>
-                        entry.status === 'error' ||
+                        entry.status === 'error' &&
                         (typeof entry.errorMessage === 'string' && (
                             entry.errorMessage.includes('the HTTP method <> is not valid') ||
                             entry.errorMessage.includes('Failed to execute Hurl script.') ||
