@@ -100,6 +100,9 @@ export async function updateProjectArtifacts(publishedArtifacts: ArtifactsNotifi
     const currentProjectStructure: ProjectStructureResponse = StateMachine.context().projectStructure;
     const rootPath = StateMachine.context().projectPath ?? StateMachine.context().workspacePath;
     if (!rootPath) {
+        if (process.env.AI_TEST_ENV === 'true') {
+            return;
+        }
         console.warn("[updateProjectArtifacts] No project or workspace path found in the StateMachine context.");
         return;
     }

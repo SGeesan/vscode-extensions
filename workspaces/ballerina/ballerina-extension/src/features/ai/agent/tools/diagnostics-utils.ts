@@ -2,6 +2,7 @@ import { DiagnosticEntry, Diagnostics } from '@wso2/ballerina-core';
 import { checkProjectDiagnostics, isModuleNotFoundDiagsExist as resolveModuleNotFoundDiagnostics } from '../../../../rpc-managers/ai-panel/repair-utils';
 import { StateMachine } from '../../../../stateMachine';
 import * as path from 'path';
+import * as fs from 'fs';
 import { Uri } from 'vscode';
 
 export const DIAGNOSTICS_TOOL_NAME = "getCompilationErrors";
@@ -19,6 +20,29 @@ export interface EnrichedDiagnostic extends DiagnosticEntry {
 export interface DiagnosticsCheckResult {
     diagnostics: EnrichedDiagnostic[];
     message: string;
+}
+
+function toErrorDetails(error: unknown): string {
+    if (error instanceof Error) {
+        const rpcMeta = error as Error & { code?: unknown; data?: unknown };
+        const codePart = rpcMeta.code !== undefined ? ` [code=${String(rpcMeta.code)}]` : '';
+        const dataPart = rpcMeta.data !== undefined
+            ? ` [data=${String(rpcMeta.data).replace(/\s+/g, ' ').slice(0, 300)}]`
+            : '';
+        return `${error.message}${codePart}${dataPart}`;
+    }
+
+    if (error && typeof error === 'object') {
+        const rpcMeta = error as { message?: unknown; code?: unknown; data?: unknown };
+        const message = rpcMeta.message ? String(rpcMeta.message) : String(error);
+        const codePart = rpcMeta.code !== undefined ? ` [code=${String(rpcMeta.code)}]` : '';
+        const dataPart = rpcMeta.data !== undefined
+            ? ` [data=${String(rpcMeta.data).replace(/\s+/g, ' ').slice(0, 300)}]`
+            : '';
+        return `${message}${codePart}${dataPart}`;
+    }
+
+    return String(error);
 }
 
 /**
@@ -92,14 +116,31 @@ export async function checkCompilationErrors(
     tempProjectPath: string
 ): Promise<DiagnosticsCheckResult> {
     try {
+        if (!tempProjectPath) {
+            throw new Error('Diagnostics check failed: tempProjectPath is empty.');
+        }
+
+        if (!fs.existsSync(tempProjectPath)) {
+            throw new Error(`Diagnostics check failed: path does not exist: ${tempProjectPath}`);
+        }
+
         // Get language client from state machine
         const langClient = StateMachine.langClient();
+        if (!langClient) {
+            throw new Error('Diagnostics check failed: language client is not initialized.');
+        }
 
         // Get diagnostics from language server for the current project
         console.log(`[DiagnosticsUtils] Calling language server for diagnostics on ${tempProjectPath}`);
         let diagnostics: Diagnostics[] = [];
+        let diagnosticsUseAISchema = true;
+
+        const getDiagnostics = async (useAISchema: boolean): Promise<Diagnostics[]> => {
+            return checkProjectDiagnostics(langClient, tempProjectPath, useAISchema);
+        };
+
         try {
-            diagnostics = await checkProjectDiagnostics(langClient, tempProjectPath, true);
+            diagnostics = await getDiagnostics(true);
             // HACK: When the generated code includes `import ballerinax/client.config;` (without the quoted
             // identifier), the language server returns diagnostics with the module name stripped to
             // `ballerinax/.config` — omitting "client". As a workaround, we detect this and
@@ -119,19 +160,58 @@ export async function checkCompilationErrors(
                 };
             }
         } catch (diagError) {
-            // Resolve module dependencies using ai scheme
-            const aiUri = Uri.file(tempProjectPath).with({ scheme: 'ai' }).toString();
-            await langClient.resolveModuleDependencies({
-                documentIdentifier: {
-                    uri: aiUri
-                }
+            console.warn('[DiagnosticsUtils] Initial diagnostics call failed, attempting dependency resolve fallback.', {
+                tempProjectPath,
+                reason: toErrorDetails(diagError)
             });
-            diagnostics = await checkProjectDiagnostics(langClient, tempProjectPath, true);
+
+            // First fallback: try file-scheme diagnostics directly.
+            try {
+                diagnostics = await getDiagnostics(false);
+                diagnosticsUseAISchema = false;
+                console.warn('[DiagnosticsUtils] Falling back to file-scheme diagnostics succeeded.', {
+                    tempProjectPath,
+                });
+            } catch (fileDiagError) {
+                // Second fallback: resolve dependencies using ai scheme and retry.
+                const aiUri = Uri.file(tempProjectPath).with({ scheme: 'ai' }).toString();
+                let aiResolveReason: string | undefined;
+                let fileResolveReason: string | undefined;
+
+                try {
+                    await langClient.resolveModuleDependencies({
+                        documentIdentifier: {
+                            uri: aiUri
+                        }
+                    });
+                    diagnostics = await getDiagnostics(true);
+                    diagnosticsUseAISchema = true;
+                } catch (resolveError) {
+                    aiResolveReason = toErrorDetails(resolveError);
+
+                    // Third fallback: resolve dependencies using file scheme and retry file-scheme diagnostics.
+                    const fileUri = Uri.file(tempProjectPath).toString();
+                    try {
+                        await langClient.resolveModuleDependencies({
+                            documentIdentifier: {
+                                uri: fileUri
+                            }
+                        });
+                        diagnostics = await getDiagnostics(false);
+                        diagnosticsUseAISchema = false;
+                    } catch (fileResolveError) {
+                        fileResolveReason = toErrorDetails(fileResolveError);
+                        throw new Error(
+                            `Diagnostics fallback failed. initialAiDiag=${toErrorDetails(diagError)}; fileDiag=${toErrorDetails(fileDiagError)}; aiResolve=${aiResolveReason}; fileResolve=${fileResolveReason}`
+                        );
+                    }
+                }
+            }
         }
         // Check if there are module not found diagnostics and attempt to resolve them
         const isDiagsChanged = await resolveModuleNotFoundDiagnostics(diagnostics, langClient);
         if (isDiagsChanged) {
-            diagnostics = await checkProjectDiagnostics(langClient, tempProjectPath, true);
+            diagnostics = await checkProjectDiagnostics(langClient, tempProjectPath, diagnosticsUseAISchema);
         }
 
         // Transform and enrich diagnostics with hints
@@ -154,13 +234,18 @@ export async function checkCompilationErrors(
             message: `Found ${errorCount} compilation error(s). Review and fix the errors before proceeding.`
         };
     } catch (error) {
-        console.error("[DiagnosticsUtils] Error checking compilation errors:", error);
+        const reason = toErrorDetails(error);
+        console.error("[DiagnosticsUtils] Error checking compilation errors:", {
+            tempProjectPath,
+            reason,
+            error,
+        });
         return {
             diagnostics: [{
                 message: "Internal error occurred while checking compilation errors."
             }],
             message: `<CRITICAL_ERROR> Failed to check compilation errors due to an internal error. Avoid try to resolve this with code changes. Acknowledge the failure, consider the task is done.
-Reason: ${error instanceof Error ? error.message : 'Unknown error'}
+Reason: ${reason}
 </CRITICAL_ERROR>`,
         };
     }

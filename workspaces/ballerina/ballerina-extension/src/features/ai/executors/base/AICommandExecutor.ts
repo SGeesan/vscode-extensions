@@ -140,8 +140,13 @@ export abstract class AICommandExecutor<TParams = any> {
      * Stage 1: Initialize workspace/thread in chat storage (if enabled)
      */
     protected async initializeWorkspaceThread(): Promise<void> {
+        const chatStorageConfig = this.config.chatStorage;
+        if (!chatStorageConfig?.enabled) {
+            return;
+        }
+
         try {
-            const { projectRootPath, threadId } = this.config.chatStorage;
+            const { projectRootPath, threadId } = chatStorageConfig;
 
             // Initialize workspace and thread
             chatStateStorage.getOrCreateThread(projectRootPath, threadId);
@@ -284,7 +289,11 @@ export abstract class AICommandExecutor<TParams = any> {
      * @returns Array of chat messages, or empty array if storage disabled
      */
     protected getChatHistory(): any[] {
-        const { projectRootPath, threadId } = this.config.chatStorage;
+        const chatStorageConfig = this.config.chatStorage;
+        if (!chatStorageConfig?.enabled) {
+            return [];
+        }
+        const { projectRootPath, threadId } = chatStorageConfig;
         return chatStateStorage.getChatHistoryForLLM(projectRootPath, threadId);
     }
 
@@ -294,7 +303,11 @@ export abstract class AICommandExecutor<TParams = any> {
      * @param metadata - Generation metadata (operation type, etc.)
      */
     protected addGeneration(userPrompt: string, metadata: any): any {
-        const { projectRootPath, threadId } = this.config.chatStorage;
+        const chatStorageConfig = this.config.chatStorage;
+        if (!chatStorageConfig?.enabled) {
+            return undefined;
+        }
+        const { projectRootPath, threadId } = chatStorageConfig;
         return chatStateStorage.addGeneration(
             projectRootPath,
             threadId,
