@@ -30,6 +30,19 @@ export const TOKEN_REFRESH_ONLY_SUPPORTED_FOR_BI_INTEL = "Token refresh is only 
 export const AUTH_CREDENTIALS_SECRET_KEY = 'CopilotAuthCredentials';
 export const NO_AUTH_CREDENTIALS_FOUND = "No authentication credentials found.";
 
+const isCanceledError = (error: unknown): boolean => {
+    if (error instanceof vscode.CancellationError) {
+        return true;
+    }
+
+    if (error && typeof error === 'object') {
+        const maybeError = error as { name?: unknown; message?: unknown };
+        return maybeError.name === 'Canceled' || maybeError.message === 'Canceled';
+    }
+
+    return false;
+};
+
 /**
  * Get the WSO2 Platform extension API, activating it if needed.
  * Returns undefined if the extension is not installed.
@@ -227,14 +240,17 @@ export const storeAuthCredentials = async (credentials: AuthCredentials): Promis
 };
 
 export const getAuthCredentials = async (): Promise<AuthCredentials | undefined> => {
-    const credentialsJson = await extension.context.secrets.get(AUTH_CREDENTIALS_SECRET_KEY);
-    if (!credentialsJson) {
-        return undefined;
-    }
-
     try {
+        const credentialsJson = await extension.context.secrets.get(AUTH_CREDENTIALS_SECRET_KEY);
+        if (!credentialsJson) {
+            return undefined;
+        }
+
         return JSON.parse(credentialsJson) as AuthCredentials;
     } catch (error) {
+        if (isCanceledError(error)) {
+            return undefined;
+        }
         console.error('Error parsing auth credentials:', error);
         return undefined;
     }
@@ -355,6 +371,9 @@ export const getBiIntelId = async (): Promise<string | undefined> => {
         const decoded = jwtDecode<JwtPayload>(accessToken);
         return decoded.sub;
     } catch (error) {
+        if (isCanceledError(error)) {
+            return undefined;
+        }
         console.error('Error decoding JWT token:', error);
         return undefined;
     }

@@ -103,6 +103,12 @@ export function activateAIFeatures(ballerinaExternalInstance: BallerinaExtension
                 const executor = new AgentExecutor(config);
                 const result = await executor.run();
 
+                // Check if execution resulted in an error
+                if (result.error) {
+                    console.error(`[Test Mode] Execution returned with error:`, result.error);
+                    throw result.error;
+                }
+
                 return {
                     tempProjectPath: result.tempProjectPath,
                     isolatedProjectPath: params.projectPath

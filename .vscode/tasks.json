@@ -202,8 +202,8 @@
         {
             "label": "clean:ballerina-test-output",
             "type": "shell",
-            "command": "rm",
-            "args": ["-rf", "out"],
+            "command": "powershell",
+            "args": ["-Command", "Remove-Item -Recurse -Force -Path out -ErrorAction SilentlyContinue"],
             "options": {
                 "cwd": "${workspaceFolder}/workspaces/ballerina/ballerina-extension"
             }

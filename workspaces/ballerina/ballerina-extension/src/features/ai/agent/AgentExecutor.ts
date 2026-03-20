@@ -314,9 +314,18 @@ Generation stopped by user. The last in-progress task was not saved. Files have 
                 throw error;
             }
 
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : '';
+            
+            console.error('[AgentExecutor] Execution failed:', {
+                message: errorMessage,
+                stack: errorStack,
+                error: error
+            });
+
             this.config.eventHandler({
                 type: "error",
-                content: "An error occurred during agent execution. Please check the logs for details."
+                content: `An error occurred during agent execution: ${errorMessage}`
             });
 
             // For other errors, return result with error

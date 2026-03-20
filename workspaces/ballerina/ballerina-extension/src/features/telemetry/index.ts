@@ -78,7 +78,7 @@ export async function getTelemetryProperties(extension: BallerinaExtension, comp
     : Promise<{ [key: string]: string; }> {
 
     const userType = await getLoginMethod();
-    const biIntelId = await getBiIntelId();
+    const biIntelId = process.env.AI_TEST_ENV === 'true' ? undefined : await getBiIntelId();
 
     return {
         ...params,

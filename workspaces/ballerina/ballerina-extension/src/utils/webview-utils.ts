@@ -17,6 +17,7 @@
  */
 
 import { Uri, ExtensionContext, WebviewOptions, WebviewPanelOptions, Webview } from "vscode";
+import * as path from "path";
 import { join, sep } from "path";
 import { extension } from "../BalExtensionContext";
 
@@ -137,10 +138,11 @@ function getComposerCSSFiles(disableComDebug: boolean, devHost: string, webView:
     ];
 }
 
-function getComposerJSFiles(componentName: string, disableComDebug: boolean, devHost: string, webView: Webview): string[] {
-    const filePath = join((extension.ballerinaExtInstance.context as ExtensionContext).extensionPath, 'resources', 'jslibs') + sep + componentName + '.js';
+export function getComposerJSFiles(context: ExtensionContext, componentName: string, webView: Webview): string[] {
+    const filePath = path.join(context.extensionPath, 'resources', 'jslibs', componentName + '.js');
+    const devHost = process.env.WEB_VIEW_DEV_HOST?.replace(/\/$/, '') || '';
     return [
-        (isDevMode && !disableComDebug) ? join(devHost, componentName + '.js')
+        isDevMode ? `${devHost}/${componentName}.js`
             : webView.asWebviewUri(Uri.file(filePath)).toString(),
         isDevMode ? 'http://localhost:8097' : '' // For React Dev Tools
     ];
@@ -149,6 +151,6 @@ function getComposerJSFiles(componentName: string, disableComDebug: boolean, dev
 export function getComposerWebViewOptions(componentName: string, webView: Webview, { disableComDebug = false, devHost = process.env.WEB_VIEW_DEV_HOST as string } = {}): Partial<WebViewOptions> {
     return {
         cssFiles: getComposerCSSFiles(disableComDebug, devHost, webView),
-        jsFiles: getComposerJSFiles(componentName, disableComDebug, devHost, webView)
+        jsFiles: getComposerJSFiles((extension.ballerinaExtInstance.context as ExtensionContext), componentName, webView)
     };
 }

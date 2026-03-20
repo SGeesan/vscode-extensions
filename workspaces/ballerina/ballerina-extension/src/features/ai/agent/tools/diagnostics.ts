@@ -61,17 +61,33 @@ The tool analyzes the entire Ballerina package and returns:
                 ? path.join(tempProjectPath, packagePath)
                 : tempProjectPath;
 
-            // Use shared utility to check compilation errors
-            const result = await checkCompilationErrors(targetPath);
+            try {
+                // Use shared utility to check compilation errors
+                const result = await checkCompilationErrors(targetPath);
 
-            // Emit tool_result event to visualizer (shows result in UI)
-            eventHandler({
-                type: "tool_result",
-                toolName: DIAGNOSTICS_TOOL_NAME,
-                toolOutput: result
-            });
+                // Emit tool_result event to visualizer (shows result in UI)
+                eventHandler({
+                    type: "tool_result",
+                    toolName: DIAGNOSTICS_TOOL_NAME,
+                    toolOutput: result
+                });
 
-            return result;
+                return result;
+            } catch (error) {
+                const reason = error instanceof Error ? error.message : String(error);
+                const failedResult: DiagnosticsCheckResult = {
+                    diagnostics: [{ message: `Diagnostics tool execution failed for path: ${targetPath}` }],
+                    message: `<CRITICAL_ERROR> Failed to execute diagnostics tool.\nReason: ${reason}\nPath: ${targetPath}</CRITICAL_ERROR>`
+                };
+
+                eventHandler({
+                    type: "tool_result",
+                    toolName: DIAGNOSTICS_TOOL_NAME,
+                    toolOutput: failedResult
+                });
+
+                return failedResult;
+            }
         }
     });
 }
