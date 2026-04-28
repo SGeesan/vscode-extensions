@@ -17,14 +17,16 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { DependencyDetails } from "@wso2/mi-core";
+import { ConnectorEffectiveData, DependencyDetails } from "@wso2/mi-core";
 import { useVisualizerContext } from "@wso2/mi-rpc-client";
-import { Button, FormActions, FormView, Typography, Codicon, LinkButton, ProgressRing, Overlay, Dialog } from "@wso2/ui-toolkit";
+import { Button, FormView, Typography, Codicon, LinkButton, ProgressRing, Overlay, Dialog } from "@wso2/ui-toolkit";
 import { DependencyItem } from "./DependencyItem";
 import { DependencyForm } from "./DependencyForm";
-import { Range } from "../../../../../syntax-tree/lib/src";
 import { Colors } from "@wso2/mi-diagram/lib/resources/constants";
+import { compareVersions } from "@wso2/mi-diagram/lib/utils/commons";
 import styled from "@emotion/styled";
+
+const DRIVER_MANAGEMENT_MIN_VERSION = "4.4.0";
 
 const LoadingContainer = styled.div`
     display: flex;
@@ -79,6 +81,12 @@ export function DependencyManager(props: ManageDependenciesProps) {
     const [pendingDependency, setPendingDependency] = useState<{ groupId: string; artifact: string; version: string } | null>(null);
     const [existingDependencyToReplace, setExistingDependencyToReplace] = useState<DependencyDetails | null>(null);
 
+    // Driver dependency state (only used when type === 'zip' and runtime >= 4.4.0)
+    const [allConnectorDrivers, setAllConnectorDrivers] = useState<{ [id: string]: ConnectorEffectiveData }>({});
+    const [supportsDriverManagement, setSupportsDriverManagement] = useState(false);
+    const [globalOmitAllDrivers, setGlobalOmitAllDrivers] = useState(false);
+    const [isTogglingGlobalOmit, setIsTogglingGlobalOmit] = useState(false);
+
     useEffect(() => {
         fetchDependencies();
         fetchConnectors();
@@ -86,8 +94,16 @@ export function DependencyManager(props: ManageDependenciesProps) {
 
     const fetchDependencies = async () => {
         const projectDetails = await rpcClient.getMiVisualizerRpcClient().getProjectDetails();
-        const dependencyList = title === 'Connector Dependencies' ? 
-            projectDetails.dependencies.connectorDependencies : title === 'Integration Project Dependencies' ? 
+        const runtimeVersion = projectDetails.primaryDetails?.runtimeVersion?.value;
+        const driverManagementSupported = type === 'zip'
+            && !!runtimeVersion
+            && compareVersions(runtimeVersion, DRIVER_MANAGEMENT_MIN_VERSION) >= 0;
+        setSupportsDriverManagement(driverManagementSupported);
+        if (driverManagementSupported) {
+            fetchDriverDependencies();
+        }
+        const dependencyList = title === 'Connector Dependencies' ?
+            projectDetails.dependencies.connectorDependencies : title === 'Integration Project Dependencies' ?
             projectDetails.dependencies.integrationProjectDependencies : projectDetails.dependencies.otherDependencies;
         setDependencies(dependencyList);
     };
@@ -105,6 +121,31 @@ export function DependencyManager(props: ManageDependenciesProps) {
             }
         } catch (error) {
             console.error('Error fetching connector versions:', error);
+        }
+    };
+
+    const fetchDriverDependencies = async () => {
+        try {
+            const res = await rpcClient.getMiDiagramRpcClient().getConnectorDependencies({});
+            setAllConnectorDrivers(res?.allConnectors ?? {});
+            setGlobalOmitAllDrivers(res?.omitAllDrivers ?? false);
+        } catch (e) {
+            console.error("Failed to fetch connector driver dependencies", e);
+        }
+    };
+
+    const handleGlobalOmitAllDriversToggle = async () => {
+        const newValue = !globalOmitAllDrivers;
+        setIsTogglingGlobalOmit(true);
+        try {
+            await rpcClient.getMiDiagramRpcClient().updateGlobalConnectorFlags({
+                omitAllDrivers: newValue,
+            });
+            await fetchDriverDependencies();
+        } catch (e) {
+            console.error("Failed to update global omitAllDrivers", e);
+        } finally {
+            setIsTogglingGlobalOmit(false);
         }
     };
 
@@ -156,11 +197,11 @@ export function DependencyManager(props: ManageDependenciesProps) {
         newDependency: { groupId: string; artifact: string; version: string }
     ) => {
         setDuplicateError('');
-        
+
         // Check for dependency duplicates (same groupId, artifactId, and version)
         const exactDuplicate = dependencies.some(
-            dep => dep.groupId === newDependency.groupId && 
-                   dep.artifact === newDependency.artifact && 
+            dep => dep.groupId === newDependency.groupId &&
+                   dep.artifact === newDependency.artifact &&
                    dep.version === newDependency.version
         );
 
@@ -171,14 +212,14 @@ export function DependencyManager(props: ManageDependenciesProps) {
 
         // Check for same groupId and artifactId but different version
         const existingDependency = dependencies.find(
-            dep => dep.groupId === newDependency.groupId && 
-                   dep.artifact === newDependency.artifact && 
+            dep => dep.groupId === newDependency.groupId &&
+                   dep.artifact === newDependency.artifact &&
                    dep.version !== newDependency.version
         );
 
         if (existingDependency) {
             const message = `A dependency with Group ID "${existingDependency.groupId}" and Artifact ID "${existingDependency.artifact}" already exists with version "${existingDependency.version}".\n\nDo you want to overwrite it with version "${newDependency.version}"?`;
-            
+
             setConfirmDialogMessage(message);
             setPendingDependency(newDependency);
             setExistingDependencyToReplace(existingDependency);
@@ -219,11 +260,11 @@ export function DependencyManager(props: ManageDependenciesProps) {
 
     const handleConfirmOverwrite = async (confirmed: boolean) => {
         setShowConfirmDialog(false);
-        
+
         if (confirmed && pendingDependency && existingDependencyToReplace) {
             // Deleting the existing dependency
             setIsUpdating(true);
-            
+
             await rpcClient.getMiVisualizerRpcClient().updatePomValues({
                 pomValues: [{ range: existingDependencyToReplace.range, value: '' }]
             });
@@ -271,6 +312,30 @@ export function DependencyManager(props: ManageDependenciesProps) {
                             <Codicon name="add" />
                             Add Dependency
                         </LinkButton>
+                        {supportsDriverManagement && (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                marginBottom: '12px',
+                                padding: '6px 8px',
+                                borderRadius: '4px',
+                                background: 'var(--vscode-editor-inactiveSelectionBackground)',
+                            }}>
+                                <Codicon name="server-environment" sx={{ fontSize: '14px', color: 'var(--vscode-descriptionForeground)' }} />
+                                <Typography sx={{ flex: 1, fontSize: '12px', color: 'var(--vscode-foreground)' }}>
+                                    Omit all driver JARs from CAR file
+                                </Typography>
+                                <Button
+                                    appearance={globalOmitAllDrivers ? 'primary' : 'secondary'}
+                                    onClick={handleGlobalOmitAllDriversToggle}
+                                    disabled={isTogglingGlobalOmit}
+                                    sx={{ padding: '2px 10px', fontSize: '11px', minWidth: 'unset' }}
+                                >
+                                    {globalOmitAllDrivers ? 'Enabled' : 'Disabled'}
+                                </Button>
+                            </div>
+                        )}
                         {
                             dependencies.length === 0 ? (
                                 <Typography>No dependencies found</Typography>
@@ -286,12 +351,16 @@ export function DependencyManager(props: ManageDependenciesProps) {
                                             onClose={onClose}
                                             dependency={dependency}
                                             connectors={connectors}
-                                            inboundConnectors={inboundConnectors} />
+                                            inboundConnectors={inboundConnectors}
+                                            driverData={supportsDriverManagement ? allConnectorDrivers[dependency.artifact] : undefined}
+                                            onDriverUpdated={supportsDriverManagement ? fetchDriverDependencies : undefined}
+                                        />
                                     ))}
                                 </div>
                             )
                         }
                     </div>
+
                     {isUpdating && (
                         <>
                             <Overlay sx={{ background: `${Colors.SURFACE_CONTAINER}`, opacity: `0.3`, zIndex: 2000 }} />

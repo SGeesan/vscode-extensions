@@ -117,6 +117,9 @@ export const COMMANDS = {
     EDIT_K8_CONFIGURATION_COMMAND: 'MI.edit-k8-configuration',
     MANAGE_REGISTRY_PROPERTIES_COMMAND: 'MI.manage-registry-property',
     CONFIGURE_DEFAULT_MODEL: 'MI.configureDefaultModelProvider',
+    MANAGE_CONNECTOR_DEPENDENCIES: 'MI.project-explorer.manage-connector-dependencies',
+    OVERRIDE_CONNECTOR_DEPENDENCY: 'MI.project-explorer.override-connector-dependency',
+    RESET_CONNECTOR_DEPENDENCY: 'MI.project-explorer.reset-connector-dependency',
 
     BI_EXTENSION: 'WSO2.ballerina-integrator',
     BI_OPEN_COMMAND: 'ballerina.open.bi.welcome',

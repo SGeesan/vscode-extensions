@@ -301,7 +301,13 @@ import {
     DriverDownloadRequest,
     DriverDownloadResponse,
     DriverMavenCoordinatesRequest,
-    DriverMavenCoordinatesResponse
+    DriverMavenCoordinatesResponse,
+    GetConnectorDependenciesRequest,
+    GetConnectorDependenciesResponse,
+    UpdateConnectorDependencyOverrideRequest,
+    ResetConnectorDependencyOverridesRequest,
+    UpdateConnectorFlagsRequest,
+    UpdateGlobalConnectorFlagsRequest,
 } from "@wso2/mi-core";
 import axios from 'axios';
 import { error } from "console";
@@ -3928,12 +3934,18 @@ ${endpointAttributes}
                         await copy(tmpobj.name, connectorPath);
                         // Remove the temporary file
                         tmpobj.removeCallback();
+                        // Ensure connector-config.json exists for this project
+                        const langClient = await MILanguageClient.getInstance(this.projectUri);
+                        await langClient.initConnectorConfig(this.projectUri);
                         resolve({ path: connectorPath });
                     });
                     writer.on('error', reject);
                 });
             }
 
+            // Connector already present — still ensure config file exists
+            const langClient = await MILanguageClient.getInstance(this.projectUri);
+            await langClient.initConnectorConfig(this.projectUri);
             return new Promise((resolve, reject) => {
                 resolve({ path: connectorPath });
             });
@@ -6581,6 +6593,46 @@ ${keyValuesXML}`;
         return new Promise(async (resolve) => {
             const langClient = await MILanguageClient.getInstance(this.projectUri);
             const res = await langClient.getInputOutputMappings(params);
+            resolve(res);
+        });
+    }
+
+    async getConnectorDependencies(params: GetConnectorDependenciesRequest): Promise<GetConnectorDependenciesResponse> {
+        return new Promise(async (resolve) => {
+            const langClient = await MILanguageClient.getInstance(this.projectUri);
+            const res = await langClient.getConnectorDependencies(params);
+            resolve(res);
+        });
+    }
+
+    async updateConnectorDependencyOverride(params: UpdateConnectorDependencyOverrideRequest): Promise<boolean> {
+        return new Promise(async (resolve) => {
+            const langClient = await MILanguageClient.getInstance(this.projectUri);
+            const res = await langClient.updateConnectorDependencyOverride(params);
+            resolve(res);
+        });
+    }
+
+    async resetConnectorDependencyOverrides(params: ResetConnectorDependencyOverridesRequest): Promise<boolean> {
+        return new Promise(async (resolve) => {
+            const langClient = await MILanguageClient.getInstance(this.projectUri);
+            const res = await langClient.resetConnectorDependencyOverrides(params);
+            resolve(res);
+        });
+    }
+
+    async updateConnectorFlags(params: UpdateConnectorFlagsRequest): Promise<boolean> {
+        return new Promise(async (resolve) => {
+            const langClient = await MILanguageClient.getInstance(this.projectUri);
+            const res = await langClient.updateConnectorFlags(params);
+            resolve(res);
+        });
+    }
+
+    async updateGlobalConnectorFlags(params: UpdateGlobalConnectorFlagsRequest): Promise<boolean> {
+        return new Promise(async (resolve) => {
+            const langClient = await MILanguageClient.getInstance(this.projectUri);
+            const res = await langClient.updateGlobalConnectorFlags(params);
             resolve(res);
         });
     }

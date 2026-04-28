@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Connector Config",
+  "description": "Configuration file for overriding connector dependency versions in WSO2 MI projects.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version of this config file.",
+      "default": "1.0"
+    },
+    "omitAllDrivers": {
+      "type": "boolean",
+      "description": "When true, driver JARs for all connectors are excluded from the CAR file."
+    },
+    "omitAllConnectors": {
+      "type": "boolean",
+      "description": "When true, all connector ZIPs are excluded from the CAR file."
+    },
+    "connectors": {
+      "type": "object",
+      "description": "Map of connector Maven artifactId (e.g. \"mi-connector-file\") to its dependency overrides.",
+      "additionalProperties": {
+        "type": "object",
+        "description": "Override configuration for a single connector.",
+        "properties": {
+          "omit": {
+            "type": "boolean",
+            "description": "When true, this connector's ZIP is excluded from the CAR file."
+          },
+          "omitAllDrivers": {
+            "type": "boolean",
+            "description": "When true, all driver JARs for this connector are excluded from the CAR file."
+          },
+          "qname": {
+            "type": "string",
+            "description": "The connector QName in {package}name form (e.g. \"{org.wso2.connector}db\"). Written automatically by the language server; do not edit manually."
+          },
+          "dependencies": {
+            "type": "array",
+            "description": "List of dependency overrides for this connector.",
+            "items": {
+              "type": "object",
+              "description": "A single dependency override. Matched by connectionType first, then by groupId+artifactId.",
+              "properties": {
+                "connectionType": {
+                  "type": "string",
+                  "description": "The connection type key from descriptor.yml (e.g. \"MYSQL\", \"SFTP\"). Used to identify which dependency to override."
+                },
+                "groupId": {
+                  "type": "string",
+                  "description": "Override the Maven groupId. Only effective when the override also changes the artifactId."
+                },
+                "artifactId": {
+                  "type": "string",
+                  "description": "Override the Maven artifactId. Use together with groupId to substitute a different library."
+                },
+                "version": {
+                  "type": "string",
+                  "description": "Override the dependency version (e.g. \"9.0.0\")."
+                },
+                "omit": {
+                  "type": "boolean",
+                  "description": "When true, this dependency is excluded from the CAR file entirely."
+                },
+                "localPath": {
+                  "type": "string",
+                  "description": "Absolute path to a local JAR file. When set, Maven resolution is skipped and this JAR is used directly."
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["version"],
+  "additionalProperties": false
+}

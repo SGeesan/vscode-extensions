@@ -400,6 +400,22 @@ export async function activateProjectExplorer(treeviewId: string, context: Exten
 		openView(EVENT_TYPE.OPEN_VIEW, { view: MACHINE_VIEW.RegistryForm, documentUri: file?.fsPath });
 	});
 
+	commands.registerCommand(COMMANDS.MANAGE_CONNECTOR_DEPENDENCIES, async (item: ProjectExplorerEntry) => {
+		await manageConnectorDependencies(projectUri, item);
+	});
+
+	commands.registerCommand(COMMANDS.OVERRIDE_CONNECTOR_DEPENDENCY, async (item: ProjectExplorerEntry) => {
+		const info = (item as any).info;
+		if (!info) return;
+		await overrideConnectorDependency(projectUri, info.connectorArtifactId, info.connectionType, info.currentVersion);
+	});
+
+	commands.registerCommand(COMMANDS.RESET_CONNECTOR_DEPENDENCY, async (item: ProjectExplorerEntry) => {
+		const info = (item as any).info;
+		if (!info) return;
+		await resetConnectorDependency(projectUri, info.connectorArtifactId, info.connectionType);
+	});
+
 	// delete
 	commands.registerCommand(COMMANDS.DELETE_PROJECT_EXPLORER_ITEM, async (item: TreeItem) => {
 		let file: string | undefined;
@@ -775,4 +791,133 @@ export async function activateProjectExplorer(treeviewId: string, context: Exten
 
 function revealWebviewPanel(beside: boolean = true) {
 	extension.webviewReveal = beside;
+}
+
+async function manageConnectorDependencies(projectUri: string, item: ProjectExplorerEntry) {
+    const langClient = await MILanguageClient.getInstance(projectUri);
+    const response = await langClient.getConnectorDependencies({});
+    const allConnectors = response?.allConnectors;
+
+    if (!allConnectors || Object.keys(allConnectors).length === 0) {
+        window.showInformationMessage('No connector dependencies found. Add connectors to your project first.');
+        return;
+    }
+
+    // Build quick-pick items: one per connector+dependency combination
+    type DepItem = vscode.QuickPickItem & {
+        connectorArtifactId: string;
+        connectionType?: string;
+        currentVersion: string;
+        isOverridden: boolean;
+        omit: boolean;
+    };
+
+    const items: DepItem[] = [];
+    for (const [connectorId, connectorData] of Object.entries(allConnectors)) {
+        for (const dep of connectorData.dependencies ?? []) {
+            const effectiveVersion = dep.overriddenVersion ?? dep.defaultVersion ?? '';
+            const label = `$(package) ${connectorId}  ·  ${dep.connectionType ?? dep.artifactId ?? 'dependency'}`;
+            const description = dep.omit
+                ? '$(circle-slash) omitted'
+                : dep.isOverridden
+                ? `$(edit) ${effectiveVersion}  (default: ${dep.defaultVersion})`
+                : effectiveVersion;
+            items.push({
+                label,
+                description,
+                connectorArtifactId: connectorId,
+                connectionType: dep.connectionType,
+                currentVersion: effectiveVersion,
+                isOverridden: dep.isOverridden ?? false,
+                omit: dep.omit ?? false,
+            });
+        }
+    }
+
+    const picked = await window.showQuickPick(items, {
+        placeHolder: 'Select a connector dependency to manage',
+        title: 'Connector Dependencies',
+    });
+    if (!picked) return;
+
+    const actions: vscode.QuickPickItem[] = [
+        { label: '$(edit) Override version', description: 'Set a custom version for this dependency' },
+        { label: '$(circle-slash) Omit dependency', description: 'Exclude this dependency from the CAR file' },
+    ];
+    if (picked.isOverridden || picked.omit) {
+        actions.push({ label: '$(discard) Reset to default', description: 'Remove override and use descriptor.yml default' });
+    }
+
+    const action = await window.showQuickPick(actions, { placeHolder: 'Choose an action', title: picked.label });
+    if (!action) return;
+
+    if (action.label.includes('Override version')) {
+        await overrideConnectorDependency(projectUri, picked.connectorArtifactId, picked.connectionType, picked.currentVersion);
+    } else if (action.label.includes('Omit dependency')) {
+        const confirm = await window.showWarningMessage(
+            `Omit the ${picked.connectionType ?? 'dependency'} driver from the CAR for ${picked.connectorArtifactId}?`,
+            { modal: true }, 'Omit'
+        );
+        if (confirm !== 'Omit') return;
+        const langClient2 = await MILanguageClient.getInstance(projectUri);
+        await langClient2.updateConnectorDependencyOverride({
+            connectorArtifactId: picked.connectorArtifactId,
+            connectionType: picked.connectionType,
+            omit: true,
+        });
+        window.showInformationMessage(`Dependency omitted. The driver will not be packed into the CAR.`);
+    } else {
+        await resetConnectorDependency(projectUri, picked.connectorArtifactId, picked.connectionType);
+    }
+}
+
+async function overrideConnectorDependency(
+    projectUri: string,
+    connectorArtifactId: string,
+    connectionType: string | undefined,
+    currentVersion: string
+) {
+    const newVersion = await window.showInputBox({
+        prompt: `Enter the version to use for ${connectionType ?? 'dependency'} in ${connectorArtifactId}`,
+        value: currentVersion,
+        placeHolder: 'e.g. 9.0.0',
+        validateInput: (v) => v.trim() ? undefined : 'Version cannot be empty',
+    });
+    if (!newVersion) return;
+
+    const langClient = await MILanguageClient.getInstance(projectUri);
+    const success = await langClient.updateConnectorDependencyOverride({
+        connectorArtifactId,
+        connectionType,
+        version: newVersion.trim(),
+    });
+    if (success) {
+        window.showInformationMessage(`Dependency version set to ${newVersion.trim()} for ${connectorArtifactId}.`);
+    } else {
+        window.showErrorMessage(`Failed to update connector dependency override.`);
+    }
+}
+
+async function resetConnectorDependency(
+    projectUri: string,
+    connectorArtifactId: string,
+    connectionType: string | undefined
+) {
+    const label = connectionType ? `${connectionType} dependency` : 'all dependencies';
+    const confirm = await window.showWarningMessage(
+        `Reset ${label} for ${connectorArtifactId} to the default from descriptor.yml?`,
+        { modal: true }, 'Reset'
+    );
+    if (confirm !== 'Reset') return;
+
+    const langClient = await MILanguageClient.getInstance(projectUri);
+    const success = await langClient.resetConnectorDependencyOverrides({
+        connectorArtifactId,
+        connectionType,
+    });
+    if (success) {
+        window.showInformationMessage(`Dependency override reset for ${connectorArtifactId}.`);
+    } else {
+        window.showErrorMessage(`Failed to reset connector dependency override.`);
+    }
 }

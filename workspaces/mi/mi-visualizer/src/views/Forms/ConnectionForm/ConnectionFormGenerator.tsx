@@ -132,29 +132,43 @@ export function AddConnection(props: AddConnectionProps) {
                 setConnectionType(connectionFound.connectionType);
                 setConnectionName(props.connectionName);
                 setFormData(connectionSchema);
-                const parameters = connectionFound.parameters
-                const driverParams = parameters.filter((param: { name: string; }) => param.name === 'groupId' || param.name === 'artifactId' || param.name === 'version' || param.name === 'driverPath');
-                // populate parameters that does not exist in uischema
-                const generatedParams = {
-                    ...params, paramValues: generateParams(driverParams)
-                };
-                setParams(generatedParams);
+
+                // Load driver overrides from connector-config.json to pre-populate driver fields
+                const visualizerState = await rpcClient.getVisualizerState();
+                const projectUri = visualizerState.projectUri;
+                const connectorArtifactId = connector?.artifactId ?? connector?.name ?? props.connector?.name ?? '';
+                const ct = connectionFound.connectionType;
+                let driverParamValues: Array<{ name: string; value: string }> = [];
+                if (connectorArtifactId && ct) {
+                    try {
+                        const depResponse = await rpcClient.getMiDiagramRpcClient().getConnectorDependencies({
+                            connectorArtifactId,
+                        });
+                        const match = depResponse?.dependencies?.find(d =>
+                            d.connectionType?.toUpperCase() === ct.toUpperCase());
+                        if (match) {
+                            if (match.groupId) driverParamValues.push({ name: 'groupId', value: match.groupId });
+                            if (match.artifactId) driverParamValues.push({ name: 'artifactId', value: match.artifactId });
+                            const version = match.overriddenVersion ?? match.defaultVersion ?? '';
+                            if (version) driverParamValues.push({ name: 'version', value: version });
+                        }
+                    } catch (_) {
+                        // connector-config.json may not exist; fall back to empty driver fields
+                    }
+                }
+                setParams({ ...params, paramValues: generateParams(driverParamValues) });
+
                 reset({
                     name: props.connectionName,
                     connectionType: connectionType
                 });
 
-
-                // Populate form with existing values
+                // Populate form with existing values (no uischema path)
                 if (connectionSchema === undefined) {
-                    // Handle connections without uischema
-                    // Remove connection name from param manager fields
-                    const filteredParameters = parameters.filter((param: { name: string; }) => param.name !== 'name');
-
-                    const modifiedParams = {
-                        ...params, paramValues: generateParams(filteredParameters)
-                    };
-                    setParams(modifiedParams);
+                    const parameters = connectionFound.parameters;
+                    const filteredParameters = parameters.filter((param: { name: string; }) =>
+                        param.name !== 'name' && !['groupId', 'artifactId', 'version', 'driverPath'].includes(param.name));
+                    setParams({ ...params, paramValues: generateParams(filteredParameters) });
                 }
             }
         }
@@ -209,9 +223,10 @@ export function AddConnection(props: AddConnectionProps) {
             console.error("Errors in saving connection form", errors);
         }
 
-        // Fill the values
+        // Fill the values — driver coordinate fields are managed via connector-config.json, not local entries
+        const DRIVER_FIELDS = new Set(['groupId', 'artifactId', 'version', 'driverPath']);
         Object.keys(values).forEach((key: string) => {
-            if ((key !== 'configRef' && key !== 'connectionType' && key !== 'connectionName') && values[key] != null) {
+            if ((key !== 'configRef' && key !== 'connectionType' && key !== 'connectionName' && !DRIVER_FIELDS.has(key)) && values[key] != null) {
                 if (typeof values[key] === 'object' && values[key] !== null) {
                     if (Array.isArray(values[key])) {
                         // Handle param manager input type
@@ -277,6 +292,22 @@ export function AddConnection(props: AddConnectionProps) {
             connectionType: connectionType
         });
 
+        // If the user specified driver coordinates, persist them to connector-config.json
+        const driverGroupId: string = values.groupId?.trim?.() ?? '';
+        const driverArtifactId: string = values.artifactId?.trim?.() ?? '';
+        const driverVersion: string = values.version?.trim?.() ?? '';
+        const connectorArtifactId: string = props.connector?.artifactId ?? props.connector?.name ?? '';
+        if (connectionType && connectorArtifactId && (driverGroupId || driverArtifactId || driverVersion)) {
+            await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
+
+                connectorArtifactId,
+                connectionType,
+                groupId: driverGroupId || undefined,
+                artifactId: driverArtifactId || undefined,
+                version: driverVersion || undefined,
+            });
+        }
+
         if (props.isPopup) {
             rpcClient.getMiVisualizerRpcClient().openView({
                 type: POPUP_EVENT_TYPE.CLOSE_VIEW,
@@ -298,9 +329,12 @@ export function AddConnection(props: AddConnectionProps) {
         const connectorTag = localEntryTag.ele(`${props.connector.name}.init`);
         connectorTag.ele('name', connectionName);
 
+        const DRIVER_FIELDS = new Set(['groupId', 'artifactId', 'version', 'driverPath']);
         params.paramValues.forEach(param => {
-            connectorTag.ele(param.key).txt(param.value);
-        })
+            if (!DRIVER_FIELDS.has(param.key)) {
+                connectorTag.ele(param.key).txt(param.value);
+            }
+        });
 
         const modifiedXml = template.end({ prettyPrint: true, headless: true });
 
@@ -316,6 +350,23 @@ export function AddConnection(props: AddConnectionProps) {
             filePath: props.connectionName ? props.path : "",
             connectionType: connectionType
         });
+
+        // Persist driver coordinates to connector-config.json if provided
+        const driverParam = (key: string) =>
+            params.paramValues.find(p => p.key === key)?.value?.trim() ?? '';
+        const driverGroupId = driverParam('groupId');
+        const driverArtifactId = driverParam('artifactId');
+        const driverVersion = driverParam('version');
+        const connectorArtifactId: string = props.connector?.artifactId ?? props.connector?.name ?? '';
+        if (connectionType && connectorArtifactId && (driverGroupId || driverArtifactId || driverVersion)) {
+            await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
+                connectorArtifactId,
+                connectionType,
+                groupId: driverGroupId || undefined,
+                artifactId: driverArtifactId || undefined,
+                version: driverVersion || undefined,
+            });
+        }
 
         if (props.isPopup) {
             rpcClient.getMiVisualizerRpcClient().openView({
@@ -454,7 +505,10 @@ export function AddConnection(props: AddConnectionProps) {
                                 watch={watch}
                                 getValues={getValues}
                                 skipGeneralHeading={true}
-                                ignoreFields={["connectionName"]} />
+                                ignoreFields={["connectionName"]}
+                                connectorName={props.connector.name}
+                                connectorArtifactId={props.connector.artifactId ?? props.connector.name}
+                                connectionName={connectionType} />
                             <FormActions>
                                 {formData.testConnectionEnabled && <div style={{ display: 'flex', alignItems: 'center', marginRight: 'auto' }}>
                                     <Button

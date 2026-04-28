@@ -631,6 +631,12 @@
         "category": "MI"
       }
     ],
+    "jsonValidation": [
+      {
+        "fileMatch": "**/src/main/wso2mi/resources/connectors/connector-config.json",
+        "url": "./schemas/connector-config-schema.json"
+      }
+    ],
     "menus": {
       "commandPalette": [
         {
