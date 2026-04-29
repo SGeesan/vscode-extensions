@@ -134,8 +134,6 @@ export function AddConnection(props: AddConnectionProps) {
                 setFormData(connectionSchema);
 
                 // Load driver overrides from connector-config.json to pre-populate driver fields
-                const visualizerState = await rpcClient.getVisualizerState();
-                const projectUri = visualizerState.projectUri;
                 const connectorArtifactId = connector?.artifactId ?? connector?.name ?? props.connector?.name ?? '';
                 const ct = connectionFound.connectionType;
                 let driverParamValues: Array<{ name: string; value: string }> = [];
@@ -292,20 +290,23 @@ export function AddConnection(props: AddConnectionProps) {
             connectionType: connectionType
         });
 
-        // If the user specified driver coordinates, persist them to connector-config.json
+        // If the user specified driver coordinates, persist them to connector-config.json.
         const driverGroupId: string = values.groupId?.trim?.() ?? '';
         const driverArtifactId: string = values.artifactId?.trim?.() ?? '';
         const driverVersion: string = values.version?.trim?.() ?? '';
         const connectorArtifactId: string = props.connector?.artifactId ?? props.connector?.name ?? '';
         if (connectionType && connectorArtifactId && (driverGroupId || driverArtifactId || driverVersion)) {
-            await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
-
-                connectorArtifactId,
-                connectionType,
-                groupId: driverGroupId || undefined,
-                artifactId: driverArtifactId || undefined,
-                version: driverVersion || undefined,
-            });
+            try {
+                await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
+                    connectorArtifactId,
+                    connectionType,
+                    groupId: driverGroupId || undefined,
+                    artifactId: driverArtifactId || undefined,
+                    version: driverVersion || undefined,
+                });
+            } catch (e) {
+                console.warn('Failed to persist driver coordinates to connector-config.json:', e);
+            }
         }
 
         if (props.isPopup) {
@@ -351,7 +352,8 @@ export function AddConnection(props: AddConnectionProps) {
             connectionType: connectionType
         });
 
-        // Persist driver coordinates to connector-config.json if provided
+        // Persist driver coordinates to connector-config.json if provided.
+        // Non-fatal: connection is already saved; a failure here only means driver pinning is lost.
         const driverParam = (key: string) =>
             params.paramValues.find(p => p.key === key)?.value?.trim() ?? '';
         const driverGroupId = driverParam('groupId');
@@ -359,13 +361,17 @@ export function AddConnection(props: AddConnectionProps) {
         const driverVersion = driverParam('version');
         const connectorArtifactId: string = props.connector?.artifactId ?? props.connector?.name ?? '';
         if (connectionType && connectorArtifactId && (driverGroupId || driverArtifactId || driverVersion)) {
-            await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
-                connectorArtifactId,
-                connectionType,
-                groupId: driverGroupId || undefined,
-                artifactId: driverArtifactId || undefined,
-                version: driverVersion || undefined,
-            });
+            try {
+                await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
+                    connectorArtifactId,
+                    connectionType,
+                    groupId: driverGroupId || undefined,
+                    artifactId: driverArtifactId || undefined,
+                    version: driverVersion || undefined,
+                });
+            } catch (e) {
+                console.warn('Failed to persist driver coordinates to connector-config.json:', e);
+            }
         }
 
         if (props.isPopup) {

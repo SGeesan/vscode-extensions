@@ -84,8 +84,6 @@ export function DependencyManager(props: ManageDependenciesProps) {
     // Driver dependency state (only used when type === 'zip' and runtime >= 4.4.0)
     const [allConnectorDrivers, setAllConnectorDrivers] = useState<{ [id: string]: ConnectorEffectiveData }>({});
     const [supportsDriverManagement, setSupportsDriverManagement] = useState(false);
-    const [globalOmitAllDrivers, setGlobalOmitAllDrivers] = useState(false);
-    const [isTogglingGlobalOmit, setIsTogglingGlobalOmit] = useState(false);
 
     useEffect(() => {
         fetchDependencies();
@@ -128,24 +126,8 @@ export function DependencyManager(props: ManageDependenciesProps) {
         try {
             const res = await rpcClient.getMiDiagramRpcClient().getConnectorDependencies({});
             setAllConnectorDrivers(res?.allConnectors ?? {});
-            setGlobalOmitAllDrivers(res?.omitAllDrivers ?? false);
         } catch (e) {
             console.error("Failed to fetch connector driver dependencies", e);
-        }
-    };
-
-    const handleGlobalOmitAllDriversToggle = async () => {
-        const newValue = !globalOmitAllDrivers;
-        setIsTogglingGlobalOmit(true);
-        try {
-            await rpcClient.getMiDiagramRpcClient().updateGlobalConnectorFlags({
-                omitAllDrivers: newValue,
-            });
-            await fetchDriverDependencies();
-        } catch (e) {
-            console.error("Failed to update global omitAllDrivers", e);
-        } finally {
-            setIsTogglingGlobalOmit(false);
         }
     };
 
@@ -312,30 +294,6 @@ export function DependencyManager(props: ManageDependenciesProps) {
                             <Codicon name="add" />
                             Add Dependency
                         </LinkButton>
-                        {supportsDriverManagement && (
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                marginBottom: '12px',
-                                padding: '6px 8px',
-                                borderRadius: '4px',
-                                background: 'var(--vscode-editor-inactiveSelectionBackground)',
-                            }}>
-                                <Codicon name="server-environment" sx={{ fontSize: '14px', color: 'var(--vscode-descriptionForeground)' }} />
-                                <Typography sx={{ flex: 1, fontSize: '12px', color: 'var(--vscode-foreground)' }}>
-                                    Omit all driver JARs from CAR file
-                                </Typography>
-                                <Button
-                                    appearance={globalOmitAllDrivers ? 'primary' : 'secondary'}
-                                    onClick={handleGlobalOmitAllDriversToggle}
-                                    disabled={isTogglingGlobalOmit}
-                                    sx={{ padding: '2px 10px', fontSize: '11px', minWidth: 'unset' }}
-                                >
-                                    {globalOmitAllDrivers ? 'Enabled' : 'Disabled'}
-                                </Button>
-                            </div>
-                        )}
                         {
                             dependencies.length === 0 ? (
                                 <Typography>No dependencies found</Typography>

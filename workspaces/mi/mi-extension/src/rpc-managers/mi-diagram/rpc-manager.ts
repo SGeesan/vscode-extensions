@@ -3946,9 +3946,7 @@ ${endpointAttributes}
             // Connector already present — still ensure config file exists
             const langClient = await MILanguageClient.getInstance(this.projectUri);
             await langClient.initConnectorConfig(this.projectUri);
-            return new Promise((resolve, reject) => {
-                resolve({ path: connectorPath });
-            });
+            return { path: connectorPath };
         } catch (error) {
             console.error('Error downloading connector:', error);
             throw new Error('Failed to download connector');

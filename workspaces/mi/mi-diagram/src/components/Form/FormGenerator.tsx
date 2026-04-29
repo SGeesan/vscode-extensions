@@ -1394,6 +1394,7 @@ export function FormGenerator(props: FormGeneratorProps) {
                 );
             case 'radio':
                 if (element.name === 'driverSelectOption') {
+                    const isOmitted = effectiveDriverDep?.omit === true;
                     const isLocalJar = !!effectiveDriverDep?.localPath;
                     const isOverridden = !!effectiveDriverDep?.overriddenVersion || isLocalJar;
                     const artifactLabel = effectiveDriverDep?.artifactId ?? '—';
@@ -1403,6 +1404,20 @@ export function FormGenerator(props: FormGeneratorProps) {
                     const driverLabel = isLocalJar
                         ? versionLabel
                         : `${artifactLabel} : ${versionLabel}`;
+                    if (isOmitted) {
+                        return (
+                            <div style={{ padding: '8px 10px', borderRadius: '4px', background: 'var(--vscode-inputValidation-errorBackground)', fontSize: '12px', color: 'var(--vscode-inputValidation-errorForeground)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Codicon name="circle-slash" />
+                                <span><strong>Driver omitted</strong> — this driver JAR will not be packed in the CAR file.</span>
+                                <Tooltip
+                                    content="To re-enable the driver, go to Project Overview > Manage Connector Dependencies."
+                                    position="right"
+                                >
+                                    <Icon name="question" isCodicon iconSx={{ fontSize: '14px' }} sx={{ marginLeft: 'auto', cursor: 'help', opacity: 0.7 }} />
+                                </Tooltip>
+                            </div>
+                        );
+                    }
                     return (
                         <div style={{ padding: '8px 10px', borderRadius: '4px', background: 'var(--vscode-editor-background)', fontSize: '12px', color: 'var(--vscode-descriptionForeground)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Codicon name={isLocalJar ? 'folder' : 'package'} />

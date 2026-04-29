@@ -20,6 +20,7 @@ import { useState } from "react";
 import styled from "@emotion/styled";
 import { ConnectorEffectiveData, ConnectorEffectiveDependency, DependencyDetails } from "@wso2/mi-core";
 import { Button, Codicon, Dialog, Tooltip } from "@wso2/ui-toolkit";
+import { compareVersions } from "@wso2/mi-diagram/lib/utils/commons";
 import { useForm } from "react-hook-form";
 import { useVisualizerContext } from "@wso2/mi-rpc-client";
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react";
@@ -296,116 +297,140 @@ export function DependencyItem(props: DependencyItemProps) {
     const handleDriverVersionSave = async () => {
         if (!driverEditState) return;
         setIsSaving(true);
-        await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
-            connectorArtifactId,
-            connectionType: driverEditState.connectionType,
-            groupId: driverEditState.groupId,
-            artifactId: driverEditState.artifactId,
-            version: driverEditState.value.trim(),
-            localPath: '',
-        });
-        setDriverEditState(null);
-        await onDriverUpdated?.();
-        setIsSaving(false);
+        try {
+            await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
+                connectorArtifactId,
+                connectionType: driverEditState.connectionType,
+                groupId: driverEditState.groupId,
+                artifactId: driverEditState.artifactId,
+                version: driverEditState.value.trim(),
+                localPath: '',
+            });
+            setDriverEditState(null);
+            await onDriverUpdated?.();
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleBrowseLocalJar = async (dep: ConnectorEffectiveDependency) => {
         const result = await rpcClient.getMiDiagramRpcClient().askDriverPath();
         if (!result?.path) return;
         setIsSaving(true);
-        await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
-            connectorArtifactId,
-            connectionType: dep.connectionType,
-            groupId: dep.groupId,
-            artifactId: dep.artifactId,
-            localPath: result.path,
-            version: '',
-        });
-        await onDriverUpdated?.();
-        setIsSaving(false);
+        try {
+            await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
+                connectorArtifactId,
+                connectionType: dep.connectionType,
+                groupId: dep.groupId,
+                artifactId: dep.artifactId,
+                localPath: result.path,
+                version: '',
+            });
+            await onDriverUpdated?.();
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleClearLocalJar = async (dep: ConnectorEffectiveDependency) => {
         setIsSaving(true);
-        await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
-            connectorArtifactId,
-            connectionType: dep.connectionType,
-            groupId: dep.groupId,
-            artifactId: dep.artifactId,
-            localPath: '',
-        });
-        await onDriverUpdated?.();
-        setIsSaving(false);
+        try {
+            await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
+                connectorArtifactId,
+                connectionType: dep.connectionType,
+                groupId: dep.groupId,
+                artifactId: dep.artifactId,
+                localPath: '',
+            });
+            await onDriverUpdated?.();
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleDriverOmitConfirm = async (confirmed: boolean) => {
         if (confirmed && confirmOmitDriver) {
             setIsSaving(true);
-            await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
-                connectorArtifactId,
-                connectionType: confirmOmitDriver.connectionType,
-                groupId: confirmOmitDriver.groupId,
-                artifactId: confirmOmitDriver.artifactId,
-                omit: true,
-            });
-            await onDriverUpdated?.();
-            setIsSaving(false);
+            try {
+                await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
+                    connectorArtifactId,
+                    connectionType: confirmOmitDriver.connectionType,
+                    groupId: confirmOmitDriver.groupId,
+                    artifactId: confirmOmitDriver.artifactId,
+                    omit: true,
+                });
+                await onDriverUpdated?.();
+            } finally {
+                setIsSaving(false);
+            }
         }
         setConfirmOmitDriver(null);
     };
 
     const handleDriverReset = async (connectionType: string | undefined, groupId?: string, artifactId?: string) => {
         setIsSaving(true);
-        await rpcClient.getMiDiagramRpcClient().resetConnectorDependencyOverrides({
-            connectorArtifactId,
-            connectionType,
-            groupId,
-            artifactId,
-        });
-        await onDriverUpdated?.();
-        setIsSaving(false);
+        try {
+            await rpcClient.getMiDiagramRpcClient().resetConnectorDependencyOverrides({
+                connectorArtifactId,
+                connectionType,
+                groupId,
+                artifactId,
+            });
+            await onDriverUpdated?.();
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleOmitAllDriversConfirm = async (confirmed: boolean) => {
         if (confirmed) {
             setIsSaving(true);
-            // Reset individual overrides first, then set the connector-level flag.
-            // Order matters: resetConnectorDependencyOverrides (no connectionType) removes the
-            // entire connector entry, so updateConnectorFlags must come after to re-create it.
-            await rpcClient.getMiDiagramRpcClient().resetConnectorDependencyOverrides({
-                connectorArtifactId,
-            });
-            await rpcClient.getMiDiagramRpcClient().updateConnectorFlags({
-                connectorArtifactId,
-                omitAllDrivers: true,
-            });
-            await onDriverUpdated?.();
-            setIsSaving(false);
+            try {
+                // Reset individual overrides first, then set the connector-level flag.
+                // Order matters: resetConnectorDependencyOverrides (no connectionType) removes the
+                // entire connector entry, so updateConnectorFlags must come after to re-create it.
+                await rpcClient.getMiDiagramRpcClient().resetConnectorDependencyOverrides({
+                    connectorArtifactId,
+                });
+                await rpcClient.getMiDiagramRpcClient().updateConnectorFlags({
+                    connectorArtifactId,
+                    omitAllDrivers: true,
+                });
+                await onDriverUpdated?.();
+            } finally {
+                setIsSaving(false);
+            }
         }
         setConfirmOmitAllDrivers(false);
     };
 
     const handleResetAllDrivers = async () => {
         setIsSaving(true);
-        await rpcClient.getMiDiagramRpcClient().updateConnectorFlags({
-            connectorArtifactId,
-            omitAllDrivers: false,
-        });
-        await rpcClient.getMiDiagramRpcClient().resetConnectorDependencyOverrides({
-            connectorArtifactId,
-        });
-        await onDriverUpdated?.();
-        setIsSaving(false);
+        try {
+            await rpcClient.getMiDiagramRpcClient().updateConnectorFlags({
+                connectorArtifactId,
+                omitAllDrivers: false,
+            });
+            await rpcClient.getMiDiagramRpcClient().resetConnectorDependencyOverrides({
+                connectorArtifactId,
+            });
+            await onDriverUpdated?.();
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleConnectorOmitToggle = async () => {
         setIsSaving(true);
-        await rpcClient.getMiDiagramRpcClient().updateConnectorFlags({
-            connectorArtifactId,
-            omit: !driverData?.omit,
-        });
-        await onDriverUpdated?.();
-        setIsSaving(false);
+        try {
+            await rpcClient.getMiDiagramRpcClient().updateConnectorFlags({
+                connectorArtifactId,
+                omit: !driverData?.omit,
+            });
+            await onDriverUpdated?.();
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     // ── Render ───────────────────────────────────────────────────────────────
@@ -418,7 +443,7 @@ export function DependencyItem(props: DependencyItemProps) {
                 version={dependency.version}
                 title="Edit Dependency"
                 onClose={() => setIsEditFormOpen(false)}
-                onUpdate={(updated) => { onEdit(updated); setIsEditFormOpen(false); }}
+                onUpdate={(updated) => { onEdit?.(updated); setIsEditFormOpen(false); }}
             />
         );
     }
@@ -453,7 +478,7 @@ export function DependencyItem(props: DependencyItemProps) {
                                     <span className="value">{dependency.version}</span>
                                 </DependencyField>
                                 {driverData?.omit && <OmittedBadge>omitted</OmittedBadge>}
-                                {latestVersion && latestVersion > dependency.version && (
+                                {latestVersion && compareVersions(latestVersion, dependency.version) > 0 && (
                                     <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
                                         <Tooltip content="A new version is available">
                                             <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -464,7 +489,7 @@ export function DependencyItem(props: DependencyItemProps) {
                                             </div>
                                         </Tooltip>
                                         <div className="action-button-container" style={{ opacity: 0, transition: 'opacity 0.2s ease' }}>
-                                            <Button appearance="icon" onClick={() => onEdit({ groupId: dependency.groupId, artifact: dependency.artifact, version: latestVersion })} tooltip="Update Dependency" buttonSx={{ color: 'var(--vscode-charts-blue)' }}>
+                                            <Button appearance="icon" onClick={() => onEdit?.({ groupId: dependency.groupId, artifact: dependency.artifact, version: latestVersion })} tooltip="Update Dependency" buttonSx={{ color: 'var(--vscode-charts-blue)' }}>
                                                 <Codicon name="sync" />
                                             </Button>
                                         </div>
@@ -492,7 +517,7 @@ export function DependencyItem(props: DependencyItemProps) {
                                     </Button>
                                 </div>
                                 <div className="action-button-container" style={{ opacity: 0, transition: 'opacity 0.2s ease' }}>
-                                    <Button appearance="icon" onClick={() => onDelete(dependency)} tooltip="Remove Dependency" buttonSx={{ color: 'var(--vscode-charts-red)' }}>
+                                    <Button appearance="icon" onClick={() => onDelete?.(dependency)} tooltip="Remove Dependency" buttonSx={{ color: 'var(--vscode-charts-red)' }}>
                                         <Codicon name="trash" />
                                     </Button>
                                 </div>

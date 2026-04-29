@@ -776,4 +776,3 @@ export async function activateProjectExplorer(treeviewId: string, context: Exten
 function revealWebviewPanel(beside: boolean = true) {
 	extension.webviewReveal = beside;
 }
-
