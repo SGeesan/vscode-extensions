@@ -2,6 +2,20 @@
 
 All notable changes to the "micro-integrator" extension will be documented in this file.
 
+## [3.2.0] - 2026-04-28
+
+### New Features   
+
+Added: Allow referencing connector operations in projects that depend on projects that has connectors ([#1430](https://github.com/wso2/mi-vscode/issues/1430))   
+Added: Share tryout payloads across resources ([#1475](https://github.com/wso2/mi-vscode/issues/1475))   
+
+### Fixed
+
+Fixed: Connector display name is not showing in the connections tab ([#1473](https://github.com/wso2/mi-vscode/issues/1473))   
+Fixed: Round function is missing in the expression editor ([#1474](https://github.com/wso2/mi-vscode/issues/1474))   
+Fixed: "MI 4.4.0 Project is Not Properly Set Up" Warning Appearing Repeatedly ([#1476](https://github.com/wso2/mi-vscode/issues/1476))   
+Fixed: When trying to import an existing connector it is not notified to the user ([#1477](https://github.com/wso2/mi-vscode/issues/1477))  
+
 ## [3.1.6] - 2026-03-24
 
 ### Fixed

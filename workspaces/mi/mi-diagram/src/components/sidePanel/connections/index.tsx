@@ -172,7 +172,7 @@ export function ConnectionPage(props: ConnectorPageProps) {
                     // Operation matches
                     const operations = connections[key].connectorData?.actions || [];
                     const operationMatch = operations.some((operation: any) => {
-                        const operationNameMatch = operation.name.toLowerCase().includes(debouncedValue.toLowerCase());
+                        const operationNameMatch = (operation.displayName || operation.name).toLowerCase().includes(debouncedValue.toLowerCase());
                         if (operationNameMatch) {
                             const allowedTypes = operation.allowedConnectionTypes;
                             return allowedTypes?.includes(connection.connectionType);
@@ -211,7 +211,7 @@ export function ConnectionPage(props: ConnectorPageProps) {
                         const matchingActions: any[] = [];
                         const operations = connections[key].connectorData?.actions || [];
                         operations.forEach((operation: any) => {
-                            const operationNameMatch = operation.name.toLowerCase().includes(debouncedValue.toLowerCase());
+                            const operationNameMatch = (operation.displayName || operation.name).toLowerCase().includes(debouncedValue.toLowerCase());
                             if (operationNameMatch) {
                                 matchingActions.push(operation);
                             }
@@ -278,7 +278,9 @@ export function ConnectionPage(props: ConnectorPageProps) {
 
         // Retrieve form
         const formJSON = await rpcClient.getMiDiagramRpcClient().getConnectorForm({ uiSchemaPath: uiSchemaPath, operation: operation });
-        const parameters = connectorData.actions.find((action: any) => action.name === operation)?.parameters || null;
+        const matchedAction = connectorData.actions.find((action: any) => action.name === operation);
+        const parameters = matchedAction?.parameters || null;
+        const operationTitle = (formJSON as any).formJSON?.title || matchedAction?.title || operation;
         const iconPath = await rpcClient.getMiDiagramRpcClient().getIconPathUri({ path: connectorData.iconPath, name: "icon-small" });
 
         const icon = <img src={iconPath.uri}
@@ -306,7 +308,7 @@ export function ConnectionPage(props: ConnectorPageProps) {
                 artifactModel={props.artifactModel}
             />
         </div>;
-        sidepanelAddPage(sidePanelContext, page, `${sidePanelContext.isEditing ? "Edit" : "Add"} ${operation}`, icon);
+        sidepanelAddPage(sidePanelContext, page, `${sidePanelContext.isEditing ? "Edit" : "Add"} ${operationTitle}`, icon);
     }
 
     const ConnectionList = () => {
@@ -366,7 +368,7 @@ export function ConnectionPage(props: ConnectorPageProps) {
                                                                                     <Tooltip content={operation?.tooltip} position='bottom' key={operation.name}>
                                                                                         <GridButton
                                                                                             key={operation.name}
-                                                                                            title={FirstCharToUpperCase(operation.name)}
+                                                                                            title={FirstCharToUpperCase(operation.displayName || operation.name)}
                                                                                             description={operation.description}
                                                                                             icon={
                                                                                                 <img

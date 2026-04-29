@@ -368,14 +368,61 @@ export class MiDiagramRpcManager implements MiDiagramAPI {
     async saveInputPayload(params: SavePayloadRequest): Promise<boolean> {
         return new Promise((resolve) => {
             const { name, type, key } = this.getResourceInfoToSavePayload(params.artifactModel);
-            let content;
-            if (type == "API") {
-                content = this.readInputPayloadFile(name) ?? { type };
-                content[key] = { requests: params.payload };
-                content[key].defaultRequest = params.defaultPayload;
+
+            let content = this.readInputPayloadFile(name) ?? { type };
+
+            let payloadArray: any[];
+            try {
+                payloadArray = typeof params.payload === "string"
+                    ? JSON.parse(params.payload)
+                    : params.payload;
+            } catch {
+                resolve(false);
+                return;
+            }
+            if (!Array.isArray(payloadArray)) {
+                resolve(false);
+                return;
+            }
+
+            const sharedRequests = payloadArray.filter((p: any) => p.sharePayload);
+            const scopedRequests = payloadArray.filter((p: any) => !p.sharePayload);
+
+            const stripFlag = (arr: any[]) => arr.map(({ sharePayload, ...rest }) => rest);
+
+            const cleanShared = stripFlag(sharedRequests);
+            const cleanScoped = stripFlag(scopedRequests);
+
+            if (type === "API") {
+                // Shared (top-level) — NO defaultRequest
+                if (cleanShared.length > 0) {
+                    content.requests = cleanShared;
+                    if (content.defaultRequest) {
+                        delete content.defaultRequest;
+                    }
+                } else {
+                    content.requests = [];
+                }
+
+                // Scoped — keeps defaultRequest
+                if (cleanScoped.length > 0) {
+                    content[key] = content[key] ?? {};
+                    content[key].requests = cleanScoped;
+                } else {
+                    if (content[key]) {
+                        content[key].requests = [];
+                    }
+                }
+
+                // Always update defaultRequest for this resource key, even when there are no scoped requests
+                if (params.defaultPayload !== undefined) {
+                    content[key] = content[key] ?? {};
+                    content[key].defaultRequest = params.defaultPayload;
+                }
+
             } else {
                 content = { type };
-                content.requests = params.payload;
+                content.requests = stripFlag(payloadArray);
                 content.defaultRequest = params.defaultPayload;
             }
             const tryout = path.join(this.projectUri, ".tryout");
@@ -414,14 +461,23 @@ export class MiDiagramRpcManager implements MiDiagramAPI {
             const { name, type, key } = this.getResourceInfoToSavePayload(params.artifactModel);
             const allPayloads = this.readInputPayloadFile(name);
             if (allPayloads) {
-                let defaultPayload;
-                let payloads;
-                if (type == "API") {
-                    payloads = allPayloads[key]?.requests ?? [];
-                    defaultPayload = allPayloads[key]?.defaultRequest ?? "";
+                let payloads: any[] = [];
+                let defaultPayload = "";
+
+                if (type === "API") {
+                    const sharedPayloads = (allPayloads.requests ?? []).map((p: any) => ({
+                        ...p,
+                        sharePayload: true
+                    }));
+                    const scopedPayloads = (allPayloads[key]?.requests ?? []).map((p: any) => ({
+                        ...p,
+                        sharePayload: false
+                    }));
+                    payloads = [...sharedPayloads, ...scopedPayloads];
+                    defaultPayload = allPayloads[key]?.defaultRequest ?? allPayloads.defaultRequest ?? "";
                 } else {
                     payloads = allPayloads.requests ?? [];
-                    defaultPayload = allPayloads.defaultRequest;
+                    defaultPayload = allPayloads.defaultRequest ?? "";
                 }
                 resolve({ payloads, defaultPayload });
             } else {
@@ -448,8 +504,10 @@ export class MiDiagramRpcManager implements MiDiagramAPI {
                         Object.keys(fileContent).forEach((key) => {
                             if (key.startsWith("/")) { // Select only API resources
                                 const defaultRequestName = fileContent[key].defaultRequest;
-                                const defaultRequest = fileContent[key].requests.find((request: any) => request.name === defaultRequestName);
-                                payloadMapByResource[key] = defaultRequest ? defaultRequest : null;
+                                const defaultRequest =
+                                    (fileContent[key].requests ?? []).find((request: any) => request.name === defaultRequestName)
+                                    ?? (fileContent.requests ?? []).find((request: any) => request.name === defaultRequestName);
+                                payloadMapByResource[key] = defaultRequest ?? null;
                             }
                         });
                         payloadMapByArtifact[fileNameWithoutExtension] = payloadMapByResource;
@@ -3757,6 +3815,40 @@ ${endpointAttributes}
     async copyConnectorZip(params: CopyConnectorZipRequest): Promise<CopyConnectorZipResponse> {
         const { connectorPath } = params;
         try {
+            const langClient = await MILanguageClient.getInstance(this.projectUri);
+            const isDuplicate = await langClient.isDuplicateConnector(connectorPath);
+            if (isDuplicate?.isFromProject === false) {
+                window.showErrorMessage('The connector you are trying to add is already added from a dependency project.');
+                return { success: false };
+            }
+            if (isDuplicate?.connectorName) {
+                const overwrite = await window.showWarningMessage(
+                    `A connector with the name already exists. Do you want to overwrite it?`,
+                    { modal: true },
+                    'Yes'
+                );
+                if (overwrite === 'Yes') {
+                    const rpcClient = new MiVisualizerRpcManager(this.projectUri);
+                    if (isDuplicate?.connectorPath) {
+                        await this.removeConnector({ connectorPath: isDuplicate.connectorPath });
+                    } else {
+                        const projectDetails = await rpcClient.getProjectDetails();
+                        const connectorDependencies = projectDetails.dependencies.connectorDependencies;
+                        for (const dependencies of connectorDependencies) {
+                            if (dependencies.artifact === isDuplicate.artifactId && dependencies.version === isDuplicate.version) {
+                                await rpcClient.updatePomValues({
+                                    pomValues: [{ range: dependencies.range, value: '' }]
+                                });
+                                break;
+                            }
+                        }
+                    }
+                    await rpcClient.updateConnectorDependencies();
+                } else {
+                    return { success: false };
+                }
+            }
+            
             const connectorDirectory = path.join(this.projectUri, 'src', 'main', 'wso2mi', 'resources', 'connectors');
 
             if (!fs.existsSync(connectorDirectory)) {

@@ -215,7 +215,10 @@ export async function isMISetup(projectUri: string, miVersion: string): Promise<
     if (oldServerPath) {
         const availableMIVersion = getMIVersion(oldServerPath);
         if (availableMIVersion && compareVersions(availableMIVersion, miVersion) >= 0) {
-            if (availableMIVersion !== miVersion) {
+            if (availableMIVersion === miVersion) {
+                await config.update(SELECTED_SERVER_PATH, oldServerPath, vscode.ConfigurationTarget.WorkspaceFolder);
+                return true;
+            } else {
                 showMIPathChangePrompt();
             }
         }
