@@ -279,7 +279,8 @@ import {
     Property,
     UpdateRegistryPropertyRequest,
     GenerateMappingsParamsRequest,
-    ProjectCreationStatusResponse
+    ProjectCreationStatusResponse,
+    OpenTryItRequest
 } from "./types";
 import { RequestType, NotificationType } from "vscode-messenger-common";
 
@@ -412,6 +413,7 @@ export const exportProject: NotificationType<ExportProjectRequest> = { method: `
 export const checkOldProject: RequestType<void, boolean> = { method: `${_preFix}/checkOldProject` };
 export const refreshAccessToken: NotificationType<void> = { method: `${_preFix}/refreshAccessToken` };
 export const getOpenAPISpec: RequestType<SwaggerTypeRequest, SwaggerFromAPIResponse> = { method: `${_preFix}/getOpenAPISpec` };
+export const openTryIt: NotificationType<OpenTryItRequest> = { method: `${_preFix}/openTryIt` };
 export const editOpenAPISpec: NotificationType<SwaggerTypeRequest> = { method: `${_preFix}/editOpenAPISpec` };
 export const compareSwaggerAndAPI: RequestType<SwaggerTypeRequest, CompareSwaggerAndAPIResponse> = { method: `${_preFix}/compareSwaggerAndAPI` };
 export const updateSwaggerFromAPI: NotificationType<SwaggerTypeRequest> = { method: `${_preFix}/updateSwaggerFromAPI` };

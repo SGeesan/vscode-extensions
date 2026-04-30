@@ -277,6 +277,7 @@ import {
     DriverDownloadResponse,
     DriverMavenCoordinatesRequest,
     DriverMavenCoordinatesResponse,
+    OpenTryItRequest,
 } from "./types";
 
 export interface MiDiagramAPI {
@@ -405,6 +406,7 @@ export interface MiDiagramAPI {
     checkOldProject: () => Promise<boolean>;
     refreshAccessToken: () => void;
     getOpenAPISpec: (params: SwaggerTypeRequest) => Promise<SwaggerFromAPIResponse>;
+    openTryIt: (params: OpenTryItRequest) => void;
     editOpenAPISpec: (params: SwaggerTypeRequest) => void;
     compareSwaggerAndAPI: (params: SwaggerTypeRequest) => Promise<CompareSwaggerAndAPIResponse>;
     updateSwaggerFromAPI: (params: SwaggerTypeRequest) => void;

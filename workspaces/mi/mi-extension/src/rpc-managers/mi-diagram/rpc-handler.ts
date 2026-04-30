@@ -211,6 +211,7 @@ import {
     getMessageStore,
     getMetadataOfRegistryResource,
     getOpenAPISpec,
+    openTryIt,
     getProjectRoot,
     getProjectUuid,
     getRecipientEndpoint,
@@ -337,7 +338,8 @@ import {
     loadDriverAndTestConnection,
     LoadDriverAndTestConnectionRequest,
     canCreateConsolidatedProject,
-    createConsolidatedProjectFromWorkspace
+    createConsolidatedProjectFromWorkspace,
+    OpenTryItRequest
     // getBackendRootUrl - REMOVED: Backend URLs deprecated, all AI features use local LLM
 } from "@wso2/mi-core";
 import { Messenger } from "vscode-messenger";
@@ -475,6 +477,7 @@ export function registerMiDiagramRpcHandlers(messenger: Messenger, projectUri: s
     messenger.onRequest(checkOldProject, () => rpcManger.checkOldProject());
     messenger.onNotification(refreshAccessToken, () => rpcManger.refreshAccessToken());
     messenger.onRequest(getOpenAPISpec, (args: SwaggerTypeRequest) => rpcManger.getOpenAPISpec(args));
+    messenger.onNotification(openTryIt, (args: OpenTryItRequest) => rpcManger.openTryIt(args));
     messenger.onNotification(editOpenAPISpec, (args: SwaggerTypeRequest) => rpcManger.editOpenAPISpec(args));
     messenger.onRequest(compareSwaggerAndAPI, (args: SwaggerTypeRequest) => rpcManger.compareSwaggerAndAPI(args));
     messenger.onNotification(updateSwaggerFromAPI, (args: SwaggerTypeRequest) => rpcManger.updateSwaggerFromAPI(args));
