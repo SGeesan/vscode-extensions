@@ -156,7 +156,10 @@ export function activateVisualizer(context: vscode.ExtensionContext, firstProjec
                             open: args.open ?? false,
                             miVersion: args.miVersion ?? "4.6.0",
                             isConsolidatedProject: args.isConsolidatedProject ?? false,
-                            subProjects: args.subProjects ?? []
+                            subProjects: args.subProjects ?? [],
+                            groupID: args.groupId ?? "com.microintegrator.projects",
+                            artifactID: args.artifactId ?? args.name,
+                            version: args.version ?? "1.0.0"
                         }
                     );
                     await createSettingsFile(args);

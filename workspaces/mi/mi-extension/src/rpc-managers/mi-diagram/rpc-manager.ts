@@ -790,6 +790,9 @@ export class MiDiagramRpcManager implements MiDiagramAPI {
                 }
             });
 
+            if (!saveSwaggerDef) {
+                await generateSwagger(filePath);
+            }
             const metadataPath = path.join(this.projectUri, "src", "main", "wso2mi", "resources", "metadata", name + (apiVersion == "" ? "" : "_" + apiVersion) + "_metadata.yaml");
             fs.writeFileSync(metadataPath, getAPIMetadata({ name: name, version: apiVersion == "" ? "1.0.0" : apiVersion, context: apiContext, versionType: apiVersionType ? (apiVersionType == "url" ? apiVersionType : false) : false }));
 
@@ -4984,11 +4987,11 @@ ${keyValuesXML}`;
 
     async logoutFromMIAccount(): Promise<void> {
         const confirm = await vscode.window.showWarningMessage(
-            'Are you sure you want to logout?',
+            'Sign out of WSO2 Integrator Copilot? This only clears MI Copilot credentials and keeps your WSO2 platform session active.',
             { modal: true },
-            'Yes'
+            'Sign out'
         );
-        if (confirm === 'Yes') {
+        if (confirm === 'Sign out') {
             await logoutFromCopilot();
             StateMachineAI.sendEvent(AI_EVENT_TYPE.LOGOUT);
         } else {

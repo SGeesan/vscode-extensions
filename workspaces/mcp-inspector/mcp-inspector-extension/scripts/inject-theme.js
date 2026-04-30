@@ -74,8 +74,15 @@ const CUSTOM_CSS = `    <!-- Dynamic Theme Injection Placeholder -->
 
       // Listen for theme color messages from parent
       window.addEventListener('message', (event) => {
+        if (event.source !== window.parent) return;
         const message = event.data;
-        if (message.type === 'vscode-theme-colors') {
+        if (message && message.type === 'vscode-theme-colors') {
+          // Sync the inspector's dark-mode class with VSCode's theme so its
+          // own theme tokens (:root for light, .dark for dark) align with our overrides.
+          if (typeof message.isDark === 'boolean') {
+            document.documentElement.classList.toggle('dark', message.isDark);
+          }
+
           // Remove old theme style if exists
           if (themeStyleElement) {
             themeStyleElement.remove();
@@ -145,6 +152,9 @@ const CUSTOM_CSS = `    <!-- Dynamic Theme Injection Placeholder -->
                 background-color: \${message.colors.bodyBg} !important;
               }
             }
+
+            /* Hide the inspector's theme switcher — VSCode owns the theme. */
+            #theme-select { display: none !important; }
           \`;
           document.head.appendChild(themeStyleElement);
         }
@@ -164,10 +174,11 @@ function injectTheme() {
   // Read index.html
   let html = fs.readFileSync(INDEX_HTML_PATH, 'utf8');
 
-  // Check if theme is already injected (avoid duplicate injection)
-  if (html.includes('Dynamic Theme Injection Placeholder')) {
-    console.log('   ℹ️  Theme already injected, skipping...');
-    return;
+  // If a previous injection exists, strip it so we can replace with the latest version.
+  const existing = /\s*<!-- Dynamic Theme Injection Placeholder -->[\s\S]*?<\/script>\s*/;
+  if (existing.test(html)) {
+    html = html.replace(existing, '\n    ');
+    console.log('   ♻️  Replacing existing theme injection...');
   }
 
   // Inject custom CSS before </head> tag

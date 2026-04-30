@@ -172,9 +172,7 @@ export default function createTests() {
         });
       });
 
-      // NOTE: Skipping delete connector test as it is causing instability in the test suite.
-      // This will be re-enabled once the stability issue is resolved.
-      await test.step.skip('Delete connector', async () => {
+      await test.step('Delete connector', async () => {
         console.log('Deleting connector');
         // diagram
         const diagram = new Diagram(page.page, 'Resource');
