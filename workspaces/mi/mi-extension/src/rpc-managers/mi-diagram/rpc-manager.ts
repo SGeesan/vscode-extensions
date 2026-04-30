@@ -5802,10 +5802,11 @@ ${keyValuesXML}`;
     }
 
     async openTryIt(params: OpenTryItRequest): Promise<void> {
+        const TRYIT_REL_DIR = path.join('target', 'tryit');
         const apiFileName = path.basename(params.apiPath, ".xml");
         const swaggerPath = path.join(this.projectUri, SWAGGER_REL_DIR,
             `${apiFileName}.yaml`);
-        const tryItPath = path.join(this.projectUri, SWAGGER_REL_DIR,
+        const tryItPath = path.join(this.projectUri, TRYIT_REL_DIR,
             `${apiFileName}.tryit.hurl`);
         const langClient = await MILanguageClient.getInstance(this.projectUri);
         let response;
