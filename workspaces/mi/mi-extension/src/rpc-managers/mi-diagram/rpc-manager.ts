@@ -4989,11 +4989,11 @@ ${keyValuesXML}`;
 
     async logoutFromMIAccount(): Promise<void> {
         const confirm = await vscode.window.showWarningMessage(
-            'Are you sure you want to logout?',
+            'Sign out of WSO2 Integrator Copilot? This only clears MI Copilot credentials and keeps your WSO2 platform session active.',
             { modal: true },
-            'Yes'
+            'Sign out'
         );
-        if (confirm === 'Yes') {
+        if (confirm === 'Sign out') {
             await logoutFromCopilot();
             StateMachineAI.sendEvent(AI_EVENT_TYPE.LOGOUT);
         } else {
