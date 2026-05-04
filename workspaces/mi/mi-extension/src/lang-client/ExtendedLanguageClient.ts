@@ -585,8 +585,4 @@ export class ExtendedLanguageClient extends LanguageClient {
     async initConnectorConfig(projectPath: string): Promise<void> {
         return this.sendNotification("synapse/initConnectorConfig", { projectPath });
     }
-
-    async isDuplicateConnector(params: string): Promise<any> {
-        return this.sendRequest("synapse/isDuplicateConnector", { connectorPath: params });
-    }
 }

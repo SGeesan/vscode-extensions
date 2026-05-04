@@ -48442,15 +48442,6 @@ snapshots:
       graceful-fs: 4.2.11
       picomatch: 4.0.4
 
-  jest-util@30.3.0:
-    dependencies:
-      '@jest/types': 30.3.0
-      '@types/node': 20.19.17
-      chalk: 4.1.2
-      ci-info: 4.4.0
-      graceful-fs: 4.2.11
-      picomatch: 4.0.4
-
   jest-validate@20.0.3:
     dependencies:
       chalk: 1.1.3
