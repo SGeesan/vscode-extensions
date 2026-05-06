@@ -24,6 +24,16 @@ import * as vscode from 'vscode';
 export { HURL_TOOL_NAME };
 
 const HURL_LM_TOOL_NAME = "run-hurl-test";
+type RawHurlToolOutput = HurlToolOutput & {
+    output: HurlToolOutput["output"] & {
+        summary?: {
+            totalEntries: number;
+            passedEntries: number;
+            failedEntries: number;
+        };
+    };
+};
+
 const HURL_SCRIPT_DESCRIPTION = `The hurl script to execute. Hurl is a command-line tool for running HTTP requests written in a simple text format. A script can contain one or more requests.
 Example Script:
 GET http://example.com/api/resource
@@ -70,7 +80,7 @@ Avoid using unnecessary newlines in the hurl script, as they can lead to parsing
 export function createHurlTool() {
     return (tool as any)({
         description:
-            'A tool to execute Hurl scripts. The input is a Hurl script as a string. The output includes the execution results, including response details. Use this tool to try out HTTP endpoints.',
+            'A tool to execute Hurl scripts. The input is a Hurl script as a string. The output includes the execution results, including response details. Use this tool to try out HTTP endpoints. Prefer requests without assertions for simple try-it scenarios ( without including status code assertions such as HTTP 200 or other types of assertions)',
         inputSchema: z.object({
             hurlScript: z.string().describe(HURL_SCRIPT_DESCRIPTION),
             tryItScenario: z.string().max(30).describe("A short title for the try-it scenario being executed. This is used for logging and reporting purposes. Keep it under 30 characters."),
@@ -79,8 +89,11 @@ export function createHurlTool() {
     try {
 		const lmToolResult = await vscode.lm.invokeTool(HURL_LM_TOOL_NAME, { input: { hurlScript }, toolInvocationToken: undefined });
         const resultTextPart = (lmToolResult.content[0] as vscode.LanguageModelTextPart);
-        const response: HurlToolOutput = JSON.parse(resultTextPart.value);
-        return response;
+        const response: RawHurlToolOutput = JSON.parse(resultTextPart.value);
+        // Remove `summary` to avoid implying test/assertion semantics.
+        // The tool is used only for trying requests, not API validation.
+        const { summary, ...outputWithoutSummary } = response.output;
+        return { ...response, output: outputWithoutSummary };
     } catch (error) {
         const genericErrorOutput: HurlToolOutput = {
 			input:{
