@@ -5788,7 +5788,6 @@ ${keyValuesXML}`;
             response = await langClient.swaggerFromAPI({ apiPath: params.apiPath, ...(fs.existsSync(swaggerPath) && { swaggerPath: swaggerPath }) });
         }
         const generatedSwagger = response.swagger;
-        const parsedSwagger = parse(generatedSwagger!);
         const port = await getPortPromise({ port: 1000, stopPort: 3000 });
         const cors_proxy = require('cors-anywhere');
         cors_proxy.createServer({
