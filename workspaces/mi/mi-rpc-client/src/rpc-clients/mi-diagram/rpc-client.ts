@@ -472,7 +472,18 @@ import {
     canCreateConsolidatedProject,
     ProjectCreationStatusResponse,
     createConsolidatedProjectFromWorkspace,
-    OpenTryItRequest
+    OpenTryItRequest,
+    GetConnectorDependenciesRequest,
+    GetConnectorDependenciesResponse,
+    UpdateConnectorDependencyOverrideRequest,
+    ResetConnectorDependencyOverridesRequest,
+    UpdateConnectorFlagsRequest,
+    UpdateGlobalConnectorFlagsRequest,
+    getConnectorDependencies,
+    updateConnectorDependencyOverride,
+    resetConnectorDependencyOverrides,
+    updateConnectorFlags,
+    updateGlobalConnectorFlags,
 } from "@wso2/mi-core";
 import { HOST_EXTENSION } from "vscode-messenger-common";
 import { Messenger } from "vscode-messenger-webview";
@@ -1244,5 +1255,25 @@ export class MiDiagramRpcClient implements MiDiagramAPI {
 
     createConsolidatedProjectFromWorkspace(params: CreateProjectRequest): Promise<CreateProjectResponse> {
         return this._messenger.sendRequest(createConsolidatedProjectFromWorkspace, HOST_EXTENSION, params);
+    }
+
+    getConnectorDependencies(params: GetConnectorDependenciesRequest): Promise<GetConnectorDependenciesResponse> {
+        return this._messenger.sendRequest(getConnectorDependencies, HOST_EXTENSION, params);
+    }
+
+    updateConnectorDependencyOverride(params: UpdateConnectorDependencyOverrideRequest): Promise<boolean> {
+        return this._messenger.sendRequest(updateConnectorDependencyOverride, HOST_EXTENSION, params);
+    }
+
+    resetConnectorDependencyOverrides(params: ResetConnectorDependencyOverridesRequest): Promise<boolean> {
+        return this._messenger.sendRequest(resetConnectorDependencyOverrides, HOST_EXTENSION, params);
+    }
+
+    async updateConnectorFlags(params: UpdateConnectorFlagsRequest): Promise<boolean> {
+        return this._messenger.sendRequest(updateConnectorFlags, HOST_EXTENSION, params);
+    }
+
+    async updateGlobalConnectorFlags(params: UpdateGlobalConnectorFlagsRequest): Promise<boolean> {
+        return this._messenger.sendRequest(updateGlobalConnectorFlags, HOST_EXTENSION, params);
     }
 }
